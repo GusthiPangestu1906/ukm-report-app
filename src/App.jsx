@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 
-// --- CSS STYLE TERINTEGRASI (DENGAN REVISI UX LAWS UNTUK MULTIPLE UPLOAD) ---
+// --- CSS STYLE TERINTEGRASI ---
 const themeStyles = `
   :root {
     --bg-wrapper: #f8fafc;
@@ -213,11 +213,6 @@ const themeStyles = `
     color: #ef4444;
   }
 
-  .tab-button.active .tab-delete:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-    color: #ffffff;
-  }
-
   .dynamic-section {
     padding: 24px;
     border: 1.5px solid var(--border-input);
@@ -228,10 +223,8 @@ const themeStyles = `
     gap: 20px;
   }
 
-  /* --- REVISI UX UNTUK MULTIPLE UPLOAD (FITTS & MILLER LAW) --- */
-  
   .hidden-input {
-    display: none; /* Sembunyikan input asli yang melanggar hukum UX */
+    display: none;
   }
 
   .file-dropzone {
@@ -282,7 +275,7 @@ const themeStyles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 10px 16px;
     background-color: #ffffff;
     border: 1px solid var(--border-input);
     border-radius: 12px;
@@ -292,22 +285,34 @@ const themeStyles = `
   .file-chip-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     overflow: hidden;
   }
 
-  .file-chip-icon {
-    font-size: 18px;
+  /* --- FIX PREVIEW: Tambah CSS untuk Thumbnail --- */
+  .file-chip-thumbnail {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
   }
 
   .file-chip-name {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-input);
+    color: var(--text-title); /* Warna biru seperti link */
+    text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 250px;
+    max-width: 220px;
+    transition: color 0.2s;
+  }
+  
+  .file-chip-name:hover {
+    text-decoration: underline;
+    color: #172554;
   }
 
   .file-chip-remove {
@@ -330,7 +335,6 @@ const themeStyles = `
     background-color: #fca5a5;
     color: #b91c1c;
   }
-  /* --- AKHIR REVISI UX --- */
 
   .status-message {
     margin-top: 25px;
@@ -390,7 +394,6 @@ function App() {
   const [penanggungJawab, setPenanggungJawab] = useState('');
   const [tanggal, setTanggal] = useState('');
   
-  // Foto dalam bentuk array
   const [laporans, setLaporans] = useState([{ id: Date.now(), namaUkm: '', fotos: [] }]);
   const [activeTab, setActiveTab] = useState(0);
   const [status, setStatus] = useState('');
@@ -418,24 +421,23 @@ function App() {
   };
 
   const handleFileChange = (index, event) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+
     const newFiles = Array.from(event.target.files);
     const newData = [...laporans];
     const currentFotos = newData[index].fotos;
     
-    // Validasi gabungan foto lama + baru tidak boleh lebih dari 3
     if (currentFotos.length + newFiles.length > 3) {
       alert("Maksimal hanya 3 foto per entri ya!");
-      event.target.value = ''; // Reset input
+      event.target.value = ''; 
       return;
     }
     
-    // Menggabungkan foto yang sudah ada dengan foto yang baru dipilih
     newData[index].fotos = [...currentFotos, ...newFiles];
     setLaporans(newData);
-    event.target.value = ''; // Reset input agar bisa pilih foto yang sama lagi
+    event.target.value = ''; 
   };
 
-  // Fungsi khusus untuk menghapus 1 foto pilihan user (HICK'S LAW: Kontrol mudah)
   const removeFoto = (tabIndex, fotoIndex) => {
     const newData = [...laporans];
     newData[tabIndex].fotos = newData[tabIndex].fotos.filter((_, i) => i !== fotoIndex);
@@ -443,19 +445,30 @@ function App() {
   };
 
   const processAllFiles = async () => {
-    return Promise.all(laporans.map(async (item, index) => {
+    // FIX 1: Penamaan File Berdasarkan Input Teks
+    return Promise.all(laporans.map(async (item, tabIndex) => {
       if (!item.fotos || item.fotos.length === 0) {
-        throw new Error(`Foto pada laporan "${item.namaUkm || `Data ke-${index+1}`}" belum dipilih!`);
+        throw new Error(`Foto pada laporan "${item.namaUkm || `Data ke-${tabIndex+1}`}" belum dipilih!`);
       }
 
-      const processedFotos = await Promise.all(item.fotos.map(foto => {
+      // Bersihkan nama dari karakter aneh agar aman disimpan di Drive
+      const amanUkmName = item.namaUkm ? item.namaUkm.replace(/[^a-zA-Z0-9 ]/g, "").trim() : `Data_${tabIndex + 1}`;
+
+      const processedFotos = await Promise.all(item.fotos.map((foto, fotoIndex) => {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => resolve({
-            fileName: foto.name,
-            mimeType: foto.type,
-            fileBase64: reader.result.split(',')[1]
-          });
+          reader.onload = () => {
+            // Ambil ekstensi asli (contoh: jpg, png)
+            const extension = foto.name.split('.').pop() || 'jpg';
+            // Gabungkan Nama Teks + Urutan Foto
+            const customFileName = `${amanUkmName} - Foto ${fotoIndex + 1}.${extension}`;
+
+            resolve({
+              fileName: customFileName,
+              mimeType: foto.type,
+              fileBase64: reader.result.split(',')[1]
+            });
+          };
           reader.onerror = error => reject(error);
           reader.readAsDataURL(foto);
         });
@@ -511,7 +524,7 @@ function App() {
 
       <div className="app-wrapper">
         <div className="form-card">
-          <h2 className="form-title">Form UKM Report</h2>
+          <h2 className="form-title">Form Setor Karya MEDFO LMB</h2>
           
           <div className="section-heading">
             <span>1</span> Informasi Umum
@@ -561,54 +574,67 @@ function App() {
 
           <div className="dynamic-section">
             <div className="input-group">
-              <label className="form-label">Nama UKM (Data ke-{activeTab + 1}):</label>
+              <label className="form-label">Nama Konten / Output (Data ke-{activeTab + 1}):</label>
               <input
                 type="text"
                 value={laporans[activeTab].namaUkm}
                 onChange={(e) => handleTextChange(activeTab, e.target.value)}
                 className="form-input"
-                placeholder="Cth: Poster Open Recruitment, Feeds Instagram"
+                placeholder="Contoh : UKM Tari"
               />
             </div>
             
             <div className="input-group">
-              <label className="form-label">Hasil Dokumentasi (Maks 3):</label>
+              <label className="form-label">File Hasil / Bukti Tayang (Maks 3):</label>
               
-              {/* FITTS'S LAW: Area Upload Raksasa (Dropzone) */}
               {laporans[activeTab].fotos.length < 3 && (
                 <label className="file-dropzone">
+                  {/* FIX 3: accept spesifik format agar galeri HP memunculkan opsi multi-select */}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg, image/png, image/jpg, image/webp"
                     multiple 
                     onChange={(e) => handleFileChange(activeTab, e)}
                     className="hidden-input"
                   />
                   <span className="dropzone-icon">📁</span>
                   <span className="dropzone-text">Tap di sini untuk pilih foto</span>
-                  <span className="dropzone-subtext">Bisa pilih lebih dari satu (Maks 3 file)</span>
+                  <span className="dropzone-subtext">Tahan/Select foto di Galeri untuk pilih banyak</span>
                 </label>
               )}
 
-              {/* MILLER'S & HICK'S LAW: Visualisasi file yang terpisah (Chunking) & Tombol hapus spesifik */}
               {laporans[activeTab].fotos.length > 0 && (
                 <div className="file-chips-container">
-                  {Array.from(laporans[activeTab].fotos).map((foto, index) => (
-                    <div className="file-chip" key={index}>
-                      <div className="file-chip-info">
-                        <span className="file-chip-icon">🖼️</span>
-                        <span className="file-chip-name" title={foto.name}>{foto.name}</span>
+                  {Array.from(laporans[activeTab].fotos).map((foto, index) => {
+                    // Membuat URL lokal agar bisa di-preview tanpa perlu di-upload dulu
+                    const previewUrl = URL.createObjectURL(foto);
+                    
+                    return (
+                      <div className="file-chip" key={index}>
+                        <div className="file-chip-info">
+                          {/* FIX 2: Thumbnail dan Link Preview */}
+                          <img src={previewUrl} alt="preview" className="file-chip-thumbnail" />
+                          <a 
+                            href={previewUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="file-chip-name" 
+                            title="Klik untuk cek foto full"
+                          >
+                            {foto.name}
+                          </a>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => removeFoto(activeTab, index)} 
+                          className="file-chip-remove"
+                          title="Hapus foto ini"
+                        >
+                          ✕
+                        </button>
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => removeFoto(activeTab, index)} 
-                        className="file-chip-remove"
-                        title="Hapus foto ini"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
