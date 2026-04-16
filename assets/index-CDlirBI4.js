@@ -218,11 +218,6 @@ Error generating stack: `+e.message+`
     color: #ef4444;
   }
 
-  .tab-button.active .tab-delete:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-    color: #ffffff;
-  }
-
   .dynamic-section {
     padding: 24px;
     border: 1.5px solid var(--border-input);
@@ -233,10 +228,8 @@ Error generating stack: `+e.message+`
     gap: 20px;
   }
 
-  /* --- REVISI UX UNTUK MULTIPLE UPLOAD (FITTS & MILLER LAW) --- */
-  
   .hidden-input {
-    display: none; /* Sembunyikan input asli yang melanggar hukum UX */
+    display: none;
   }
 
   .file-dropzone {
@@ -287,7 +280,7 @@ Error generating stack: `+e.message+`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 10px 16px;
     background-color: #ffffff;
     border: 1px solid var(--border-input);
     border-radius: 12px;
@@ -297,22 +290,34 @@ Error generating stack: `+e.message+`
   .file-chip-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     overflow: hidden;
   }
 
-  .file-chip-icon {
-    font-size: 18px;
+  /* --- FIX PREVIEW: Tambah CSS untuk Thumbnail --- */
+  .file-chip-thumbnail {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
   }
 
   .file-chip-name {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-input);
+    color: var(--text-title); /* Warna biru seperti link */
+    text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 250px;
+    max-width: 220px;
+    transition: color 0.2s;
+  }
+  
+  .file-chip-name:hover {
+    text-decoration: underline;
+    color: #172554;
   }
 
   .file-chip-remove {
@@ -335,7 +340,6 @@ Error generating stack: `+e.message+`
     background-color: #fca5a5;
     color: #b91c1c;
   }
-  /* --- AKHIR REVISI UX --- */
 
   .status-message {
     margin-top: 25px;
@@ -389,4 +393,4 @@ Error generating stack: `+e.message+`
     box-shadow: none;
     opacity: 0.7;
   }
-`;function ee(){let[e,t]=(0,_.useState)(``),[n,r]=(0,_.useState)(``),[i,a]=(0,_.useState)([{id:Date.now(),namaUkm:``,fotos:[]}]),[o,s]=(0,_.useState)(0),[c,l]=(0,_.useState)(``),[u,d]=(0,_.useState)(!1),f=()=>{a([...i,{id:Date.now(),namaUkm:``,fotos:[]}]),s(i.length)},p=(e,t)=>{if(t.stopPropagation(),i.length===1)return alert(`Minimal harus ada 1 laporan!`);let n=i.filter((t,n)=>n!==e);a(n),s(n.length-1)},m=(e,t)=>{let n=[...i];n[e].namaUkm=t,a(n)},h=(e,t)=>{let n=Array.from(t.target.files),r=[...i],o=r[e].fotos;if(o.length+n.length>3){alert(`Maksimal hanya 3 foto per entri ya!`),t.target.value=``;return}r[e].fotos=[...o,...n],a(r),t.target.value=``},g=(e,t)=>{let n=[...i];n[e].fotos=n[e].fotos.filter((e,n)=>n!==t),a(n)},v=async()=>Promise.all(i.map(async(e,t)=>{if(!e.fotos||e.fotos.length===0)throw Error(`Foto pada laporan "${e.namaUkm||`Data ke-${t+1}`}" belum dipilih!`);let n=await Promise.all(e.fotos.map(e=>new Promise((t,n)=>{let r=new FileReader;r.onload=()=>t({fileName:e.name,mimeType:e.type,fileBase64:r.result.split(`,`)[1]}),r.onerror=e=>n(e),r.readAsDataURL(e)})));return{namaUkm:e.namaUkm,files:n}}));return(0,b.jsxs)(b.Fragment,{children:[(0,b.jsx)(`style`,{children:x}),(0,b.jsx)(`div`,{className:`app-wrapper`,children:(0,b.jsxs)(`div`,{className:`form-card`,children:[(0,b.jsx)(`h2`,{className:`form-title`,children:`Form UKM Report`}),(0,b.jsxs)(`div`,{className:`section-heading`,children:[(0,b.jsx)(`span`,{children:`1`}),` Informasi Umum`]}),(0,b.jsxs)(`div`,{className:`global-section`,children:[(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsx)(`label`,{className:`form-label`,children:`Nama Penanggung Jawab:`}),(0,b.jsx)(`input`,{type:`text`,value:e,onChange:e=>t(e.target.value),className:`form-input`,placeholder:`Cth: Budi Santoso`})]}),(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsx)(`label`,{className:`form-label`,children:`Tanggal Laporan:`}),(0,b.jsx)(`input`,{type:`date`,value:n,onChange:e=>r(e.target.value),onClick:e=>{try{e.target.showPicker()}catch{}},className:`form-input`})]})]}),(0,b.jsxs)(`div`,{className:`section-heading`,children:[(0,b.jsx)(`span`,{children:`2`}),` Detail Laporan`]}),(0,b.jsxs)(`div`,{className:`tab-container`,children:[i.map((e,t)=>(0,b.jsxs)(`button`,{type:`button`,onClick:()=>s(t),className:`tab-button ${o===t?`active`:``}`,children:[`Data `,t+1,i.length>1&&(0,b.jsx)(`span`,{onClick:e=>p(t,e),className:`tab-delete`,title:`Hapus Tab`,children:`✕`})]},e.id)),(0,b.jsx)(`button`,{type:`button`,onClick:f,className:`tab-button add-btn`,children:`+ Tambah Konten Lain`})]}),(0,b.jsxs)(`div`,{className:`dynamic-section`,children:[(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsxs)(`label`,{className:`form-label`,children:[`Nama UKM (Data ke-`,o+1,`):`]}),(0,b.jsx)(`input`,{type:`text`,value:i[o].namaUkm,onChange:e=>m(o,e.target.value),className:`form-input`,placeholder:`Cth: Poster Open Recruitment, Feeds Instagram`})]}),(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsx)(`label`,{className:`form-label`,children:`Hasil Dokumentasi (Maks 3):`}),i[o].fotos.length<3&&(0,b.jsxs)(`label`,{className:`file-dropzone`,children:[(0,b.jsx)(`input`,{type:`file`,accept:`image/*`,multiple:!0,onChange:e=>h(o,e),className:`hidden-input`}),(0,b.jsx)(`span`,{className:`dropzone-icon`,children:`📁`}),(0,b.jsx)(`span`,{className:`dropzone-text`,children:`Tap di sini untuk pilih foto`}),(0,b.jsx)(`span`,{className:`dropzone-subtext`,children:`Bisa pilih lebih dari satu (Maks 3 file)`})]}),i[o].fotos.length>0&&(0,b.jsx)(`div`,{className:`file-chips-container`,children:Array.from(i[o].fotos).map((e,t)=>(0,b.jsxs)(`div`,{className:`file-chip`,children:[(0,b.jsxs)(`div`,{className:`file-chip-info`,children:[(0,b.jsx)(`span`,{className:`file-chip-icon`,children:`🖼️`}),(0,b.jsx)(`span`,{className:`file-chip-name`,title:e.name,children:e.name})]}),(0,b.jsx)(`button`,{type:`button`,onClick:()=>g(o,t),className:`file-chip-remove`,title:`Hapus foto ini`,children:`✕`})]},t))})]})]}),c&&(0,b.jsx)(`div`,{className:`status-message ${c.includes(`Mantap`)?`success`:`error`}`,children:c}),(0,b.jsx)(`button`,{type:`button`,onClick:async o=>{if(o.preventDefault(),!e||!n)return alert(`Penanggung Jawab dan Tanggal wajib diisi!`);if(i.some(e=>!e.namaUkm))return alert(`Ada Nama Konten/Output yang belum diisi!`);try{d(!0),l(`Sedang mengemas foto-foto dan mengirim data...`);let i={penanggungJawab:e,tanggal:n,laporanList:await v()},o=await(await fetch(`https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec`,{method:`POST`,body:JSON.stringify(i)})).json();o.status===`success`?(l(`Mantap! ${o.message}`),a([{id:Date.now(),namaUkm:``,fotos:[]}]),s(0),t(``),r(``),setTimeout(()=>l(``),5e3)):l(`Gagal: ${o.message}`)}catch(e){alert(e),l(`Gagal memproses data atau koneksi terputus.`)}finally{d(!1)}},disabled:u,className:`submit-button`,children:u?`Memproses...`:`Kirim ${i.length} Data Sekaligus 🚀`})]})})]})}(0,v.createRoot)(document.getElementById(`root`)).render((0,b.jsx)(_.StrictMode,{children:(0,b.jsx)(ee,{})}));
+`;function ee(){let[e,t]=(0,_.useState)(``),[n,r]=(0,_.useState)(``),[i,a]=(0,_.useState)([{id:Date.now(),namaUkm:``,fotos:[]}]),[o,s]=(0,_.useState)(0),[c,l]=(0,_.useState)(``),[u,d]=(0,_.useState)(!1),f=()=>{a([...i,{id:Date.now(),namaUkm:``,fotos:[]}]),s(i.length)},p=(e,t)=>{if(t.stopPropagation(),i.length===1)return alert(`Minimal harus ada 1 laporan!`);let n=i.filter((t,n)=>n!==e);a(n),s(n.length-1)},m=(e,t)=>{let n=[...i];n[e].namaUkm=t,a(n)},h=(e,t)=>{if(!t.target.files||t.target.files.length===0)return;let n=Array.from(t.target.files),r=[...i],o=r[e].fotos;if(o.length+n.length>3){alert(`Maksimal hanya 3 foto per entri ya!`),t.target.value=``;return}r[e].fotos=[...o,...n],a(r),t.target.value=``},g=(e,t)=>{let n=[...i];n[e].fotos=n[e].fotos.filter((e,n)=>n!==t),a(n)},v=async()=>Promise.all(i.map(async(e,t)=>{if(!e.fotos||e.fotos.length===0)throw Error(`Foto pada laporan "${e.namaUkm||`Data ke-${t+1}`}" belum dipilih!`);let n=e.namaUkm?e.namaUkm.replace(/[^a-zA-Z0-9 ]/g,``).trim():`Data_${t+1}`,r=await Promise.all(e.fotos.map((e,t)=>new Promise((r,i)=>{let a=new FileReader;a.onload=()=>{let i=e.name.split(`.`).pop()||`jpg`;r({fileName:`${n} - Foto ${t+1}.${i}`,mimeType:e.type,fileBase64:a.result.split(`,`)[1]})},a.onerror=e=>i(e),a.readAsDataURL(e)})));return{namaUkm:e.namaUkm,files:r}}));return(0,b.jsxs)(b.Fragment,{children:[(0,b.jsx)(`style`,{children:x}),(0,b.jsx)(`div`,{className:`app-wrapper`,children:(0,b.jsxs)(`div`,{className:`form-card`,children:[(0,b.jsx)(`h2`,{className:`form-title`,children:`Form Setor Karya MEDFO LMB`}),(0,b.jsxs)(`div`,{className:`section-heading`,children:[(0,b.jsx)(`span`,{children:`1`}),` Informasi Umum`]}),(0,b.jsxs)(`div`,{className:`global-section`,children:[(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsx)(`label`,{className:`form-label`,children:`Nama Penanggung Jawab:`}),(0,b.jsx)(`input`,{type:`text`,value:e,onChange:e=>t(e.target.value),className:`form-input`,placeholder:`Cth: Budi Santoso`})]}),(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsx)(`label`,{className:`form-label`,children:`Tanggal Laporan:`}),(0,b.jsx)(`input`,{type:`date`,value:n,onChange:e=>r(e.target.value),onClick:e=>{try{e.target.showPicker()}catch{}},className:`form-input`})]})]}),(0,b.jsxs)(`div`,{className:`section-heading`,children:[(0,b.jsx)(`span`,{children:`2`}),` Detail Laporan`]}),(0,b.jsxs)(`div`,{className:`tab-container`,children:[i.map((e,t)=>(0,b.jsxs)(`button`,{type:`button`,onClick:()=>s(t),className:`tab-button ${o===t?`active`:``}`,children:[`Data `,t+1,i.length>1&&(0,b.jsx)(`span`,{onClick:e=>p(t,e),className:`tab-delete`,title:`Hapus Tab`,children:`✕`})]},e.id)),(0,b.jsx)(`button`,{type:`button`,onClick:f,className:`tab-button add-btn`,children:`+ Tambah Konten Lain`})]}),(0,b.jsxs)(`div`,{className:`dynamic-section`,children:[(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsxs)(`label`,{className:`form-label`,children:[`Nama Konten / Output (Data ke-`,o+1,`):`]}),(0,b.jsx)(`input`,{type:`text`,value:i[o].namaUkm,onChange:e=>m(o,e.target.value),className:`form-input`,placeholder:`Contoh : UKM Tari`})]}),(0,b.jsxs)(`div`,{className:`input-group`,children:[(0,b.jsx)(`label`,{className:`form-label`,children:`File Hasil / Bukti Tayang (Maks 3):`}),i[o].fotos.length<3&&(0,b.jsxs)(`label`,{className:`file-dropzone`,children:[(0,b.jsx)(`input`,{type:`file`,accept:`image/jpeg, image/png, image/jpg, image/webp`,multiple:!0,onChange:e=>h(o,e),className:`hidden-input`}),(0,b.jsx)(`span`,{className:`dropzone-icon`,children:`📁`}),(0,b.jsx)(`span`,{className:`dropzone-text`,children:`Tap di sini untuk pilih foto`}),(0,b.jsx)(`span`,{className:`dropzone-subtext`,children:`Tahan/Select foto di Galeri untuk pilih banyak`})]}),i[o].fotos.length>0&&(0,b.jsx)(`div`,{className:`file-chips-container`,children:Array.from(i[o].fotos).map((e,t)=>{let n=URL.createObjectURL(e);return(0,b.jsxs)(`div`,{className:`file-chip`,children:[(0,b.jsxs)(`div`,{className:`file-chip-info`,children:[(0,b.jsx)(`img`,{src:n,alt:`preview`,className:`file-chip-thumbnail`}),(0,b.jsx)(`a`,{href:n,target:`_blank`,rel:`noopener noreferrer`,className:`file-chip-name`,title:`Klik untuk cek foto full`,children:e.name})]}),(0,b.jsx)(`button`,{type:`button`,onClick:()=>g(o,t),className:`file-chip-remove`,title:`Hapus foto ini`,children:`✕`})]},t)})})]})]}),c&&(0,b.jsx)(`div`,{className:`status-message ${c.includes(`Mantap`)?`success`:`error`}`,children:c}),(0,b.jsx)(`button`,{type:`button`,onClick:async o=>{if(o.preventDefault(),!e||!n)return alert(`Penanggung Jawab dan Tanggal wajib diisi!`);if(i.some(e=>!e.namaUkm))return alert(`Ada Nama Konten/Output yang belum diisi!`);try{d(!0),l(`Sedang mengemas foto-foto dan mengirim data...`);let i={penanggungJawab:e,tanggal:n,laporanList:await v()},o=await(await fetch(`https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec`,{method:`POST`,body:JSON.stringify(i)})).json();o.status===`success`?(l(`Mantap! ${o.message}`),a([{id:Date.now(),namaUkm:``,fotos:[]}]),s(0),t(``),r(``),setTimeout(()=>l(``),5e3)):l(`Gagal: ${o.message}`)}catch(e){alert(e),l(`Gagal memproses data atau koneksi terputus.`)}finally{d(!1)}},disabled:u,className:`submit-button`,children:u?`Memproses...`:`Kirim ${i.length} Data Sekaligus 🚀`})]})})]})}(0,v.createRoot)(document.getElementById(`root`)).render((0,b.jsx)(_.StrictMode,{children:(0,b.jsx)(ee,{})}));
