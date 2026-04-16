@@ -1,11 +1,11 @@
 ﻿import React, { useState } from 'react';
 
-// --- CSS STYLE TERINTEGRASI DENGAN PENERAPAN LAW OF UX ---
+// --- CSS STYLE TERINTEGRASI (DENGAN REVISI UX LAWS UNTUK MULTIPLE UPLOAD) ---
 const themeStyles = `
   :root {
     --bg-wrapper: #f8fafc;
     --bg-card: #ffffff;
-    --text-title: #1e3a8a; /* Biru lebih gelap untuk kontras membaca (Jakob's Law) */
+    --text-title: #1e3a8a; 
     --bg-global: #f1f5f9;
     --text-label: #334155;
     --border-input: #cbd5e1;
@@ -66,7 +66,6 @@ const themeStyles = `
     font-weight: 800;
   }
 
-  /* MILLER'S & HICK'S LAW: Chunking & Langkah Jelas */
   .section-heading {
     font-size: 16px;
     font-weight: 700;
@@ -104,7 +103,7 @@ const themeStyles = `
   .input-group {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
 
   .form-label {
@@ -113,10 +112,9 @@ const themeStyles = `
     font-size: 14px;
   }
 
-  /* FITTS'S LAW: Ukuran Input Diperbesar (Touch Target Lebih Baik) */
   .form-input {
     width: 100%;
-    padding: 14px 18px; /* Diperbesar agar mudah di tap */
+    padding: 14px 18px; 
     border: 1.5px solid var(--border-input);
     border-radius: 12px;
     background-color: var(--bg-input);
@@ -132,14 +130,12 @@ const themeStyles = `
     box-shadow: 0 0 0 4px var(--focus-ring);
   }
 
-  /* --- PERBAIKAN KHUSUS UNTUK INPUT TANGGAL (DATE PICKER) --- */
   .form-input[type="date"] {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    cursor: pointer; /* Memberikan indikasi bahwa ini bisa diklik seluruh areanya */
+    cursor: pointer; 
     position: relative;
   }
 
-  /* Memperbesar target klik pada ikon kalender bawaan browser */
   .form-input[type="date"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
     padding: 5px;
@@ -151,27 +147,6 @@ const themeStyles = `
     opacity: 1;
   }
 
-  .form-input[type="file"] {
-    padding: 10px 16px;
-    cursor: pointer;
-  }
-  
-  /* JAKOB'S LAW: Desain tombol upload standar dan mudah dikenali */
-  .form-input[type="file"]::file-selector-button {
-    background-color: var(--bg-global);
-    color: var(--text-label);
-    border: 1px solid var(--border-input);
-    padding: 8px 16px;
-    border-radius: 8px;
-    margin-right: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .form-input[type="file"]::file-selector-button:hover {
-    background-color: #e2e8f0;
-  }
-
   .tab-container {
     display: flex;
     gap: 12px;
@@ -179,9 +154,8 @@ const themeStyles = `
     flex-wrap: wrap;
   }
 
-  /* FITTS'S LAW: Tombol Tab Lebih Lebar */
   .tab-button {
-    padding: 12px 20px; /* Target klik diperbesar */
+    padding: 12px 20px; 
     border-radius: 30px;
     border: 1.5px solid var(--tab-border);
     background-color: var(--tab-bg);
@@ -216,13 +190,12 @@ const themeStyles = `
     background-color: var(--focus-ring);
   }
 
-  /* FITTS'S LAW: Tombol Silang 'X' Jauh Lebih Besar agar tidak meleset */
   .tab-delete {
     color: #ef4444;
     margin-left: 6px;
     font-weight: bold;
-    font-size: 14px; /* Diperbesar */
-    width: 24px;     /* Area sentuh spesifik */
+    font-size: 14px; 
+    width: 24px;     
     height: 24px;
     display: flex;
     align-items: center;
@@ -255,13 +228,109 @@ const themeStyles = `
     gap: 20px;
   }
 
-  .file-status {
-    color: #10b981;
-    font-size: 13px;
-    font-weight: 600;
-    margin-top: 8px;
-    display: inline-block;
+  /* --- REVISI UX UNTUK MULTIPLE UPLOAD (FITTS & MILLER LAW) --- */
+  
+  .hidden-input {
+    display: none; /* Sembunyikan input asli yang melanggar hukum UX */
   }
+
+  .file-dropzone {
+    width: 100%;
+    padding: 30px 20px;
+    border: 2px dashed #94a3b8;
+    border-radius: 16px;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .file-dropzone:hover {
+    border-color: var(--text-title);
+    background-color: #f1f5f9;
+  }
+
+  .dropzone-icon {
+    font-size: 32px;
+  }
+
+  .dropzone-text {
+    font-weight: 600;
+    color: var(--text-label);
+    font-size: 15px;
+    text-align: center;
+  }
+
+  .dropzone-subtext {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .file-chips-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 5px;
+  }
+
+  .file-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-input);
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .file-chip-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .file-chip-icon {
+    font-size: 18px;
+  }
+
+  .file-chip-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-input);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+  }
+
+  .file-chip-remove {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #fee2e2;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.2s;
+    border: none;
+  }
+
+  .file-chip-remove:hover {
+    background-color: #fca5a5;
+    color: #b91c1c;
+  }
+  /* --- AKHIR REVISI UX --- */
 
   .status-message {
     margin-top: 25px;
@@ -283,10 +352,9 @@ const themeStyles = `
     border: 1px solid #fecaca;
   }
 
-  /* FITTS'S LAW: Tombol Submit di bawah, lebar penuh, mudah dijangkau jempol */
   .submit-button {
     width: 100%;
-    padding: 18px; /* Lebih tebal */
+    padding: 18px; 
     background-color: var(--btn-submit);
     color: white;
     border: none;
@@ -321,16 +389,17 @@ const themeStyles = `
 function App() {
   const [penanggungJawab, setPenanggungJawab] = useState('');
   const [tanggal, setTanggal] = useState('');
-  const [laporans, setLaporans] = useState([{ id: Date.now(), namaUkm: '', foto: null }]);
+  
+  // Foto dalam bentuk array
+  const [laporans, setLaporans] = useState([{ id: Date.now(), namaUkm: '', fotos: [] }]);
   const [activeTab, setActiveTab] = useState(0);
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // URL API Kamu
   const scriptURL = 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
 
   const addTab = () => {
-    setLaporans([...laporans, { id: Date.now(), namaUkm: '', foto: null }]);
+    setLaporans([...laporans, { id: Date.now(), namaUkm: '', fotos: [] }]);
     setActiveTab(laporans.length);
   };
 
@@ -342,37 +411,71 @@ function App() {
     setActiveTab(newData.length - 1);
   };
 
-  const handleLaporanChange = (index, field, value) => {
+  const handleTextChange = (index, value) => {
     const newData = [...laporans];
-    newData[index][field] = value;
+    newData[index].namaUkm = value;
+    setLaporans(newData);
+  };
+
+  const handleFileChange = (index, event) => {
+    const newFiles = Array.from(event.target.files);
+    const newData = [...laporans];
+    const currentFotos = newData[index].fotos;
+    
+    // Validasi gabungan foto lama + baru tidak boleh lebih dari 3
+    if (currentFotos.length + newFiles.length > 3) {
+      alert("Maksimal hanya 3 foto per entri ya!");
+      event.target.value = ''; // Reset input
+      return;
+    }
+    
+    // Menggabungkan foto yang sudah ada dengan foto yang baru dipilih
+    newData[index].fotos = [...currentFotos, ...newFiles];
+    setLaporans(newData);
+    event.target.value = ''; // Reset input agar bisa pilih foto yang sama lagi
+  };
+
+  // Fungsi khusus untuk menghapus 1 foto pilihan user (HICK'S LAW: Kontrol mudah)
+  const removeFoto = (tabIndex, fotoIndex) => {
+    const newData = [...laporans];
+    newData[tabIndex].fotos = newData[tabIndex].fotos.filter((_, i) => i !== fotoIndex);
     setLaporans(newData);
   };
 
   const processAllFiles = async () => {
-    return Promise.all(laporans.map((item) => {
-      return new Promise((resolve, reject) => {
-        if (!item.foto) reject(`Foto pada laporan "${item.namaUkm || `Data ke-${activeTab+1}`}" belum diisi!`);
-        const reader = new FileReader();
-        reader.onload = () => resolve({
-          namaUkm: item.namaUkm,
-          fileName: item.foto.name,
-          mimeType: item.foto.type,
-          fileBase64: reader.result.split(',')[1]
+    return Promise.all(laporans.map(async (item, index) => {
+      if (!item.fotos || item.fotos.length === 0) {
+        throw new Error(`Foto pada laporan "${item.namaUkm || `Data ke-${index+1}`}" belum dipilih!`);
+      }
+
+      const processedFotos = await Promise.all(item.fotos.map(foto => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({
+            fileName: foto.name,
+            mimeType: foto.type,
+            fileBase64: reader.result.split(',')[1]
+          });
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(foto);
         });
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(item.foto);
-      });
+      }));
+
+      return {
+        namaUkm: item.namaUkm,
+        files: processedFotos 
+      };
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!penanggungJawab || !tanggal) return alert("Penanggung Jawab dan Tanggal wajib diisi!");
-    if (laporans.some(l => !l.namaUkm)) return alert("Ada Nama UKM yang belum diisi!");
+    if (laporans.some(l => !l.namaUkm)) return alert("Ada Nama Konten/Output yang belum diisi!");
 
     try {
       setIsLoading(true);
-      setStatus('Sedang memproses file dan mengirim data...');
+      setStatus('Sedang mengemas foto-foto dan mengirim data...');
 
       const laporanListProcessed = await processAllFiles();
       const payload = { penanggungJawab, tanggal, laporanList: laporanListProcessed };
@@ -385,7 +488,7 @@ function App() {
 
       if (result.status === "success") {
         setStatus(`Mantap! ${result.message}`);
-        setLaporans([{ id: Date.now(), namaUkm: '', foto: null }]);
+        setLaporans([{ id: Date.now(), namaUkm: '', fotos: [] }]);
         setActiveTab(0);
         setPenanggungJawab('');
         setTanggal('');
@@ -408,9 +511,8 @@ function App() {
 
       <div className="app-wrapper">
         <div className="form-card">
-          <h2 className="form-title">Form Laporan UKM Harian</h2>
+          <h2 className="form-title">Form UKM Report</h2>
           
-          {/* HICK'S & MILLER'S LAW: Pengelompokan & Penanda Langkah 1 */}
           <div className="section-heading">
             <span>1</span> Informasi Umum
           </div>
@@ -426,20 +528,14 @@ function App() {
                 type="date" 
                 value={tanggal} 
                 onChange={(e) => setTanggal(e.target.value)} 
-                /* MENAMBAHKAN AUTO-OPEN KALENDER KETIKA DIKLIK DI MANA SAJA */
                 onClick={(e) => {
-                  try {
-                    e.target.showPicker();
-                  } catch (err) {
-                    // Fallback tenang jika browser lama tidak mendukung showPicker
-                  }
+                  try { e.target.showPicker(); } catch (err) {}
                 }}
                 className="form-input" 
               />
             </div>
           </div>
 
-          {/* HICK'S & MILLER'S LAW: Pengelompokan & Penanda Langkah 2 */}
           <div className="section-heading">
             <span>2</span> Detail Laporan
           </div>
@@ -459,7 +555,7 @@ function App() {
               </button>
             ))}
             <button type="button" onClick={addTab} className="tab-button add-btn">
-              + Tambah UKM
+              + Tambah Konten Lain
             </button>
           </div>
 
@@ -469,20 +565,52 @@ function App() {
               <input
                 type="text"
                 value={laporans[activeTab].namaUkm}
-                onChange={(e) => handleLaporanChange(activeTab, 'namaUkm', e.target.value)}
+                onChange={(e) => handleTextChange(activeTab, e.target.value)}
                 className="form-input"
-                placeholder="Cth: UKM Tari"
+                placeholder="Cth: Poster Open Recruitment, Feeds Instagram"
               />
             </div>
+            
             <div className="input-group">
-              <label className="form-label">Foto Dokumentasi:</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleLaporanChange(activeTab, 'foto', e.target.files[0])}
-                className="form-input"
-              />
-              {laporans[activeTab].foto && <div className="file-status">✓ File dipilih: {laporans[activeTab].foto.name}</div>}
+              <label className="form-label">Hasil Dokumentasi (Maks 3):</label>
+              
+              {/* FITTS'S LAW: Area Upload Raksasa (Dropzone) */}
+              {laporans[activeTab].fotos.length < 3 && (
+                <label className="file-dropzone">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple 
+                    onChange={(e) => handleFileChange(activeTab, e)}
+                    className="hidden-input"
+                  />
+                  <span className="dropzone-icon">📁</span>
+                  <span className="dropzone-text">Tap di sini untuk pilih foto</span>
+                  <span className="dropzone-subtext">Bisa pilih lebih dari satu (Maks 3 file)</span>
+                </label>
+              )}
+
+              {/* MILLER'S & HICK'S LAW: Visualisasi file yang terpisah (Chunking) & Tombol hapus spesifik */}
+              {laporans[activeTab].fotos.length > 0 && (
+                <div className="file-chips-container">
+                  {Array.from(laporans[activeTab].fotos).map((foto, index) => (
+                    <div className="file-chip" key={index}>
+                      <div className="file-chip-info">
+                        <span className="file-chip-icon">🖼️</span>
+                        <span className="file-chip-name" title={foto.name}>{foto.name}</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => removeFoto(activeTab, index)} 
+                        className="file-chip-remove"
+                        title="Hapus foto ini"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
