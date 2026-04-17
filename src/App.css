@@ -42,7 +42,7 @@ html, body, #root {
   padding: 40px;
   border-radius: 20px;
   box-shadow: var(--card-shadow);
-  box-sizing: border-box; /* Mencegah overflow */
+  box-sizing: border-box; 
 }
 
 .form-title {
@@ -160,20 +160,10 @@ html, body, #root {
   padding-right: 8px; 
 }
 
-.draft-list-section::-webkit-scrollbar {
-  width: 6px;
-}
-.draft-list-section::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 10px;
-}
-.draft-list-section::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-}
-.draft-list-section::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
+.draft-list-section::-webkit-scrollbar { width: 6px; }
+.draft-list-section::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+.draft-list-section::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.draft-list-section::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 .draft-item {
   display: flex;
@@ -185,10 +175,16 @@ html, body, #root {
   border-radius: 12px;
   transition: all 0.2s;
   flex-shrink: 0; 
-  gap: 12px; /* Memberi jarak antara teks dan tombol hapus */
+  gap: 12px; 
 }
 
-.draft-item:hover {
+/* Item yang sedang di-upload */
+.draft-item.processing {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.draft-item:hover:not(.processing) {
   border-color: var(--text-title);
   background-color: #ffffff;
   box-shadow: 0 2px 8px rgba(30, 58, 138, 0.08);
@@ -198,10 +194,10 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  text-align: left; /* SOLUSI: Teks menjadi rata kiri */
+  text-align: left;
   align-items: flex-start;
-  flex: 1; /* SOLUSI: Mengambil seluruh sisa ruang yang ada di kiri */
-  min-width: 0; /* Mencegah teks mendorong batas keluar */
+  flex: 1; 
+  min-width: 0; 
 }
 
 .draft-title {
@@ -211,13 +207,50 @@ html, body, #root {
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis; /* Jika nama UKM terlalu panjang, akan menjadi "UKM Sepak..." */
+  text-overflow: ellipsis; 
 }
 
 .draft-subtitle {
   font-size: 12px;
   color: #64748b;
   font-weight: 500;
+}
+
+/* === FITUR LOADING BAR === */
+.progress-container {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.draft-status-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.draft-status-text.success {
+  color: #10b981;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #3b82f6;
+  border-radius: 4px;
+  transition: width 0.4s ease, background-color 0.3s ease;
+}
+
+.progress-bar-fill.success {
+  background-color: #10b981;
 }
 
 .btn-delete-draft {
@@ -234,12 +267,18 @@ html, body, #root {
   font-weight: bold;
   font-size: 18px; 
   transition: all 0.2s;
-  flex-shrink: 0; /* Mencegah tombol mengecil */
+  flex-shrink: 0; 
 }
 
-.btn-delete-draft:hover {
+.btn-delete-draft:hover:not(:disabled) {
   background-color: #fca5a5;
   color: #b91c1c;
+}
+
+.btn-delete-draft:disabled {
+  background-color: #f1f5f9;
+  color: #cbd5e1;
+  cursor: not-allowed;
 }
 
 .empty-draft {
@@ -252,7 +291,6 @@ html, body, #root {
   border-radius: 12px;
   background-color: #f8fafc;
 }
-/* --- AKHIR UI DRAFT --- */
 
 .hidden-input { display: none; }
 
@@ -281,115 +319,131 @@ html, body, #root {
 .dropzone-text { font-weight: 600; color: var(--text-label); font-size: 15px; text-align: center; }
 .dropzone-subtext { font-size: 12px; color: #64748b; text-align: center; }
 
-.file-chips-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 5px;
-}
+.file-chips-container { display: flex; flex-direction: column; gap: 10px; margin-top: 5px; }
 
 .file-chip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background-color: #ffffff;
-  border: 1px solid var(--border-input);
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-  gap: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background-color: #ffffff; border: 1px solid var(--border-input);
+  border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); gap: 12px;
 }
 
-.file-chip-info { 
-  display: flex; 
-  align-items: center; 
-  gap: 12px; 
-  overflow: hidden; 
-  flex: 1;
-}
-
-.file-chip-thumbnail { 
-  width: 44px; 
-  height: 44px; 
-  border-radius: 8px; 
-  object-fit: cover; 
-  border: 1px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
-.file-chip-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-title); 
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.2s;
-}
-
+.file-chip-info { display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1; }
+.file-chip-thumbnail { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1px solid #e2e8f0; flex-shrink: 0; }
+.file-chip-name { font-size: 14px; font-weight: 600; color: var(--text-title); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.2s; }
 .file-chip-name:hover { text-decoration: underline; color: #172554; }
 
-.file-chip-remove {
-  width: 32px; 
-  height: 32px; 
-  border-radius: 50%;
-  background-color: #fee2e2; 
-  color: #ef4444;
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  cursor: pointer; 
-  font-weight: bold; 
-  font-size: 14px; 
-  border: none;
-  flex-shrink: 0;
-}
+.file-chip-remove { width: 32px; height: 32px; border-radius: 50%; background-color: #fee2e2; color: #ef4444; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; font-size: 14px; border: none; flex-shrink: 0; }
 .file-chip-remove:hover { background-color: #fca5a5; color: #b91c1c; }
 
-.status-message {
-  margin-top: 25px; padding: 16px; border-radius: 12px; text-align: center; font-weight: 600;
-}
+.status-message { margin-top: 25px; padding: 16px; border-radius: 12px; text-align: center; font-weight: 600; }
 .status-message.success { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 .status-message.error { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-.submit-button {
-  width: 100%; padding: 18px; background-color: var(--btn-submit); color: white;
-  border: none; border-radius: 30px; cursor: pointer; font-weight: 700; font-size: 16px;
-  margin-top: 30px; transition: all 0.2s ease; box-shadow: 0 4px 15px var(--btn-submit-shadow);
-}
-.submit-button:hover:not(:disabled) {
-  background-color: var(--btn-submit-hover); transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--btn-submit-shadow);
-}
+.submit-button { width: 100%; padding: 18px; background-color: var(--btn-submit); color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: 700; font-size: 16px; margin-top: 30px; transition: all 0.2s ease; box-shadow: 0 4px 15px var(--btn-submit-shadow); }
+.submit-button:hover:not(:disabled) { background-color: var(--btn-submit-hover); transform: translateY(-2px); box-shadow: 0 6px 20px var(--btn-submit-shadow); }
 .submit-button:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 2px 10px var(--btn-submit-shadow); }
 .submit-button:disabled { background-color: #94a3b8; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
 
-
 /* =========================================================
-   SOLUSI RESPONSIVITAS MOBILE (HP)
+   CUSTOM MODAL / NOTIFICATION UI
    ========================================================= */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  padding: 30px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.3s ease-out;
+  text-align: center;
+}
+
+.modal-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  margin: 0 auto 20px;
+}
+
+.modal-icon.warning { background-color: #fef3c7; color: #d97706; }
+.modal-icon.success { background-color: #dcfce7; color: #166534; }
+.modal-icon.error { background-color: #fee2e2; color: #dc2626; }
+.modal-icon.confirm { background-color: #e0e7ff; color: #4f46e5; }
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-title);
+  margin: 0 0 10px 0;
+}
+
+.modal-message {
+  font-size: 15px;
+  color: var(--text-label);
+  margin: 0 0 25px 0;
+  line-height: 1.5;
+  white-space: pre-wrap; /* Agar \n bisa dirender dengan baik */
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.modal-btn.primary {
+  background-color: var(--btn-submit);
+  color: white;
+}
+.modal-btn.primary:hover { background-color: var(--btn-submit-hover); }
+
+.modal-btn.secondary {
+  background-color: #f1f5f9;
+  color: var(--text-label);
+}
+.modal-btn.secondary:hover { background-color: #e2e8f0; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 600px) {
-  .app-wrapper {
-    padding: 20px 10px; /* Jarak luar dikurangi agar form lebih luas di HP */
-  }
-
-  .form-card {
-    padding: 24px 16px; /* Ruang dalam (padding) kotak dikurangi */
-    border-radius: 16px;
-  }
-
-  .form-title {
-    font-size: 22px; /* Ukuran teks judul disesuaikan */
-    margin-bottom: 25px;
-  }
-
-  .global-section, 
-  .active-form-section {
-    padding: 16px; /* Kotak input lebih lega untuk layar HP */
-  }
-
-  .draft-item {
-    padding: 12px 14px;
-  }
+  .app-wrapper { padding: 20px 10px; }
+  .form-card { padding: 24px 16px; border-radius: 16px; }
+  .form-title { font-size: 22px; margin-bottom: 25px; }
+  .global-section, .active-form-section { padding: 16px; }
+  .draft-item { padding: 12px 14px; }
 }
