@@ -29,18 +29,6 @@ function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // --- DATABASE STAFF MUDA MEDFO ---
-  const databaseStaff = [
-    "Firda Ramadhani",
-    "Nailah Shafira Hafifi",
-    "Revi Naufal Maulana",
-    "Fitriyah Kamilah Maharani", 
-    "Farhan Deniel",
-    "Atta' Azzahra",
-    "Moch. Arya Mukti",
-    "I Putu Satwika Werdi Widagda Karang"
-  ];
-
   useEffect(() => {
     if (auth) {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -100,26 +88,29 @@ function App() {
 
   // State untuk Data Form
   const [penanggungJawab, setPenanggungJawab] = useState('');
+  const [openDropdown, setOpenDropdown] = useState(null); // Untuk Dropdown Tanggal
+  
   const [tanggal, setTanggal] = useState('');
   const [laporans, setLaporans] = useState([]);
   const [currentUkm, setCurrentUkm] = useState('');
   const [currentFotos, setCurrentFotos] = useState([]);
-  
-  // State untuk Sistem Kinerja & UI
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
-  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null, onCancel: null });
-  
-  // State untuk mengontrol Custom Dropdown yang sedang terbuka
-  const [openDropdown, setOpenDropdown] = useState(null); // 'staff' | 'date' | null
 
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null, onCancel: null });
   const scriptURL = 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
 
   const showAlert = (title, message, type = 'warning') => setModal({ isOpen: true, title, message, type, onConfirm: closeModal });
   const showConfirm = (title, message, onConfirmCallback) => setModal({ isOpen: true, title, message, type: 'confirm', onConfirm: () => { onConfirmCallback(); closeModal(); }, onCancel: closeModal });
   const closeModal = () => setModal({ ...modal, isOpen: false });
+
+  // Regex untuk input nama (menolak angka)
+  const handleNameChange = (e) => {
+    const value = e.target.value.replace(/[0-9]/g, ''); // Menghapus semua karakter angka
+    setPenanggungJawab(value);
+  };
 
   const handleUkmChange = (e) => {
     const value = e.target.value;
@@ -235,11 +226,7 @@ function App() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!penanggungJawab || !tanggal) return showAlert("Informasi Belum Lengkap", "Kolom Penanggung Jawab dan Tanggal wajib dipilih!");
-    
-    if (!databaseStaff.includes(penanggungJawab)) {
-      return showAlert("Akses Ditolak", "Nama yang Anda masukkan tidak terdaftar sebagai Staff Muda Medfo.\nSilakan cari dan pilih dari daftar yang tersedia.", "error");
-    }
+    if (!penanggungJawab.trim() || !tanggal) return showAlert("Informasi Belum Lengkap", "Kolom Penanggung Jawab dan Tanggal wajib diisi!");
 
     if (currentUkm || currentFotos.length > 0) {
       showConfirm("Data Belum Disimpan", "Ada data UKM yang sedang diketik tapi belum disimpan ke antrean.\n\nKlik 'Simpan & Kirim' untuk otomatis menyimpannya lalu mengirim semuanya.", () => {
@@ -291,45 +278,24 @@ function App() {
 
         <h2 className="form-title">Form UKM Report</h2>
         
-        {/* Latar Belakang Transparan untuk menutup dropdown jika area luar diklik */}
+        {/* Latar Belakang Transparan untuk menutup dropdown custom tanggal */}
         {openDropdown && <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>}
 
         <div className="section-heading"><span>1</span> Informasi Umum</div>
         <div className="global-section">
           
-          {/* CUSTOM UI: DROPDOWN NAMA STAFF */}
+          {/* INPUT BEBAS NAMA (HANYA HURUF) */}
           <div className="input-group">
             <label className="form-label">Nama Penanggung Jawab (Staff Medfo):</label>
-            <div className="custom-select-wrapper">
-              <div 
-                className={`custom-select-trigger ${openDropdown === 'staff' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
-                onClick={() => !isLoading && setOpenDropdown(openDropdown === 'staff' ? null : 'staff')}
-              >
-                <div className="custom-select-value">
-                  {penanggungJawab ? (
-                    <><span>👤</span> <span>{penanggungJawab}</span></>
-                  ) : (
-                    <span className="custom-select-placeholder">-- Pilih Nama Kamu --</span>
-                  )}
-                </div>
-                <span className="chevron-icon">▼</span>
-              </div>
-
-              {openDropdown === 'staff' && (
-                <div className="custom-select-dropdown">
-                  {databaseStaff.map((name, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`custom-select-item ${penanggungJawab === name ? 'selected' : ''}`}
-                      onClick={() => { setPenanggungJawab(name); setOpenDropdown(null); }}
-                    >
-                      <span style={{ fontSize: '18px', opacity: penanggungJawab === name ? 1 : 0.7 }}>👤</span>
-                      <span>{name}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <input 
+              type="text" 
+              value={penanggungJawab} 
+              onChange={handleNameChange} 
+              className="form-input" 
+              placeholder="Cth: Mila" 
+              disabled={isLoading} 
+              style={{ height: '52px', boxSizing: 'border-box' }}
+            />
           </div>
 
           {/* CUSTOM UI: DROPDOWN TANGGAL */}
@@ -339,6 +305,7 @@ function App() {
               <div 
                 className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
                 onClick={() => !isLoading && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
+                style={{ height: '52px', boxSizing: 'border-box' }}
               >
                 <div className="custom-select-value">
                   {tanggal ? (
@@ -373,7 +340,15 @@ function App() {
         <div className="active-form-section">
           <div className="input-group">
             <label className="form-label">Nama UKM:</label>
-            <input type="text" value={currentUkm} onChange={handleUkmChange} className="form-input" placeholder="Cth: UKM Sepak Bola" disabled={isLoading} />
+            <input 
+              type="text" 
+              value={currentUkm} 
+              onChange={handleUkmChange} 
+              className="form-input" 
+              placeholder="Cth: UKM Sepak Bola" 
+              disabled={isLoading} 
+              style={{ height: '52px', boxSizing: 'border-box' }}
+            />
           </div>
           
           <div className="input-group">
