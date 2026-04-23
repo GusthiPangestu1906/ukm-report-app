@@ -1,80 +1,124 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import './App.css';
 
+// KUNCI RAHASIA FIREBASE MEDFO
+const firebaseConfig = {
+  apiKey: "AIzaSyDGbcjk4lmZg3OU9h65aSifBE8VGF5hwUc",
+  authDomain: "medfo-auth-85df1.firebaseapp.com",
+  projectId: "medfo-auth-85df1",
+  storageBucket: "medfo-auth-85df1.firebasestorage.app",
+  messagingSenderId: "724707856698",
+  appId: "1:724707856698:web:a5ca85e03aafe6e3bcc003",
+  measurementId: "G-2PB43Y8XXG"
+};
+
+// Inisialisasi Firebase
+let app, auth, provider;
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+} catch (e) {
+  console.warn("Firebase error:", e);
+}
+
 function App() {
-  // --- FUNGSI GENERATE LIST HARI SENIN (Dropdown Pintar) ---
+  const [user, setUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // --- DATABASE STAFF MUDA MEDFO ---
+  const databaseStaff = [
+    "Firda Ramadhani",
+    "Nailah Shafira Hafifi",
+    "Revi Naufal Maulana",
+    "Fitriyah Kamilah Maharani", 
+    "Farhan Deniel",
+    "Atta' Azzahra",
+    "Moch. Arya Mukti",
+    "I Putu Satwika Werdi Widagda Karang"
+  ];
+
+  useEffect(() => {
+    if (auth) {
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setIsAuthLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      setIsAuthLoading(false); 
+    }
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        alert("Gagal Login: " + error.message);
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    if (auth) await signOut(auth);
+    setUser(null);
+  };
+
   const getValidMondays = () => {
     const mondays = [];
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-
-    // Loop semua hari dalam bulan ini
     const date = new Date(year, month, 1);
     while (date.getMonth() === month) {
-      if (date.getDay() === 1) { // Jika hari Senin
-        // Sembunyikan tanggal yang sudah lewat (past dates)
+      if (date.getDay() === 1) { 
         const isPast = date.setHours(0,0,0,0) < now.setHours(0,0,0,0);
         if (!isPast) {
            const d = String(date.getDate()).padStart(2, '0');
            const m = String(date.getMonth() + 1).padStart(2, '0');
-           const y = date.getFullYear();
-           mondays.push({
-             value: `${y}-${m}-${d}`,
-             label: `Senin, ${d}/${m}/${y}`
-           });
+           mondays.push({ value: `${date.getFullYear()}-${m}-${d}`, label: `Senin, ${d}/${m}/${date.getFullYear()}` });
         }
       }
       date.setDate(date.getDate() + 1);
     }
-
-    // Jaga-jaga jika di akhir bulan tidak ada lagi hari Senin, ambil 1 Senin di bulan depan
     if (mondays.length === 0) {
        const nextMonthDate = new Date(year, month + 1, 1);
-       while (nextMonthDate.getDay() !== 1) {
-          nextMonthDate.setDate(nextMonthDate.getDate() + 1);
-       }
+       while (nextMonthDate.getDay() !== 1) nextMonthDate.setDate(nextMonthDate.getDate() + 1);
        const d = String(nextMonthDate.getDate()).padStart(2, '0');
        const m = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
-       const y = nextMonthDate.getFullYear();
-       mondays.push({ value: `${y}-${m}-${d}`, label: `Senin, ${d}/${m}/${y}` });
+       mondays.push({ value: `${nextMonthDate.getFullYear()}-${m}-${d}`, label: `Senin, ${d}/${m}/${nextMonthDate.getFullYear()}` });
     }
     return mondays;
   };
 
   const [availableDates, setAvailableDates] = useState([]);
-  useEffect(() => {
-    setAvailableDates(getValidMondays());
-  }, []);
+  useEffect(() => { setAvailableDates(getValidMondays()); }, []);
 
+  // State untuk Data Form
   const [penanggungJawab, setPenanggungJawab] = useState('');
   const [tanggal, setTanggal] = useState('');
   const [laporans, setLaporans] = useState([]);
   const [currentUkm, setCurrentUkm] = useState('');
   const [currentFotos, setCurrentFotos] = useState([]);
+  
+  // State untuk Sistem Kinerja & UI
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
-
-  const [modal, setModal] = useState({
-    isOpen: false, title: '', message: '', type: 'warning', onConfirm: null, onCancel: null
-  });
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null, onCancel: null });
+  
+  // State untuk mengontrol Custom Dropdown yang sedang terbuka
+  const [openDropdown, setOpenDropdown] = useState(null); // 'staff' | 'date' | null
 
   const scriptURL = 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
 
-  const showAlert = (title, message, type = 'warning') => {
-    setModal({ isOpen: true, title, message, type, onConfirm: closeModal, onCancel: null });
-  };
-
-  const showConfirm = (title, message, onConfirmCallback) => {
-    setModal({
-      isOpen: true, title, message, type: 'confirm',
-      onConfirm: () => { onConfirmCallback(); closeModal(); },
-      onCancel: closeModal
-    });
-  };
-
+  const showAlert = (title, message, type = 'warning') => setModal({ isOpen: true, title, message, type, onConfirm: closeModal });
+  const showConfirm = (title, message, onConfirmCallback) => setModal({ isOpen: true, title, message, type: 'confirm', onConfirm: () => { onConfirmCallback(); closeModal(); }, onCancel: closeModal });
   const closeModal = () => setModal({ ...modal, isOpen: false });
 
   const handleUkmChange = (e) => {
@@ -99,19 +143,8 @@ function App() {
   const addToDraft = () => {
     if (!currentUkm.trim()) return showAlert("Data Belum Lengkap", "Kolom 'Nama UKM' wajib diisi!");
     if (currentFotos.length === 0) return showAlert("Data Belum Lengkap", "Pilih minimal 1 foto hasil dokumentasi!");
-
-    // --- FUNGSI: ANTI-DUPLIKAT UKM ---
-    const isDuplicate = laporans.some(
-      laporan => laporan.namaUkm.toLowerCase() === currentUkm.trim().toLowerCase()
-    );
-
-    if (isDuplicate) {
-      return showAlert(
-        "Duplikat Terdeteksi", 
-        `UKM "${currentUkm.trim()}" sudah ada di dalam Daftar Antrean di bawah.\n\nJika ingin menambah foto untuk UKM ini, hapus dulu data yang ada di antrean, lalu buat ulang sekaligus.`, 
-        "error"
-      );
-    }
+    const isDuplicate = laporans.some(laporan => laporan.namaUkm.toLowerCase() === currentUkm.trim().toLowerCase());
+    if (isDuplicate) return showAlert("Duplikat Terdeteksi", `UKM "${currentUkm.trim()}" sudah ada di dalam antrean.`, "error");
 
     setLaporans([...laporans, { id: Date.now(), namaUkm: currentUkm, fotos: currentFotos }]);
     setCurrentUkm(''); setCurrentFotos([]);
@@ -124,16 +157,14 @@ function App() {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
+        const img = new Image(); img.src = event.target.result;
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let width = img.width; let height = img.height;
           if (width > height) { if (width > maxWidth) { height = Math.round((height *= maxWidth / width)); width = maxWidth; } } 
           else { if (height > maxWidth) { width = Math.round((width *= maxWidth / height)); height = maxWidth; } }
           canvas.width = width; canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, width, height); ctx.drawImage(img, 0, 0, width, height);
+          const ctx = canvas.getContext('2d'); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, width, height); ctx.drawImage(img, 0, 0, width, height);
           resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
         };
         img.onerror = error => reject(error);
@@ -146,8 +177,7 @@ function App() {
     const results = [];
     for (let i = 0; i < laporanListToProcess.length; i++) {
       const item = laporanListToProcess[i];
-      setProcessingId(item.id);
-      setUploadProgress(prev => ({ ...prev, [item.id]: 10 }));
+      setProcessingId(item.id); setUploadProgress(prev => ({ ...prev, [item.id]: 10 }));
       await new Promise(resolve => setTimeout(resolve, 50)); 
       const amanUkmName = item.namaUkm.replace(/[^a-zA-Z0-9 ]/g, "").trim();
       const processedFotos = [];
@@ -158,8 +188,7 @@ function App() {
       }
       results.push({ namaUkm: item.namaUkm, files: processedFotos });
     }
-    setProcessingId('sending');
-    return results;
+    setProcessingId('sending'); return results;
   };
 
   const executeSubmission = async (finalLaporanList) => {
@@ -171,8 +200,7 @@ function App() {
 
       progressInterval = setInterval(() => {
          setUploadProgress(prev => {
-            const nextProgress = { ...prev };
-            let allHit90 = true;
+            const nextProgress = { ...prev }; let allHit90 = true;
             finalLaporanList.forEach(l => {
                if (!nextProgress[l.id]) nextProgress[l.id] = 50;
                if (nextProgress[l.id] < 90) { nextProgress[l.id] += Math.floor(Math.random() * 5) + 1; allHit90 = false; }
@@ -182,7 +210,7 @@ function App() {
          });
       }, 500);
 
-      const payload = { penanggungJawab, tanggal, laporanList: laporanListProcessed };
+      const payload = { penanggungJawab, tanggal, laporanList: laporanListProcessed, userEmail: user?.email || "Unknown" };
       const response = await fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) });
       const result = await response.json();
 
@@ -190,17 +218,16 @@ function App() {
 
       if (result.status === "success") {
         const finalProgress = {}; finalLaporanList.forEach(l => finalProgress[l.id] = 100);
-        setUploadProgress(finalProgress);
-        await new Promise(res => setTimeout(res, 600));
+        setUploadProgress(finalProgress); await new Promise(res => setTimeout(res, 600));
 
-        showAlert("🎉 BERHASIL!", `${finalLaporanList.length} data laporan UKM telah sukses dikirim ke Google Drive dan direkap di Spreadsheet.`, "success");
+        showAlert("🎉 BERHASIL!", `${finalLaporanList.length} data laporan UKM telah sukses dikirim.`, "success");
         setStatus(`Mantap! ${result.message}`); setLaporans([]); setPenanggungJawab(''); setTanggal(''); setCurrentUkm(''); setCurrentFotos([]); setProcessingId(null); setUploadProgress({});
         setTimeout(() => setStatus(''), 5000);
       } else {
         showAlert("Pengiriman Gagal", result.message, "error"); setStatus(`Gagal: ${result.message}`); setProcessingId(null);
       }
     } catch (error) {
-      showAlert("Terjadi Kesalahan Server", "Gagal memproses data atau koneksi terputus. Pastikan internetmu stabil.", "error"); setStatus("Gagal memproses data."); setProcessingId(null); clearInterval(progressInterval);
+      showAlert("Terjadi Kesalahan Server", "Gagal memproses data atau koneksi terputus.", "error"); setStatus("Gagal memproses data."); setProcessingId(null); clearInterval(progressInterval);
     } finally {
       setIsLoading(false);
     }
@@ -209,40 +236,137 @@ function App() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!penanggungJawab || !tanggal) return showAlert("Informasi Belum Lengkap", "Kolom Penanggung Jawab dan Tanggal wajib dipilih!");
+    
+    if (!databaseStaff.includes(penanggungJawab)) {
+      return showAlert("Akses Ditolak", "Nama yang Anda masukkan tidak terdaftar sebagai Staff Muda Medfo.\nSilakan cari dan pilih dari daftar yang tersedia.", "error");
+    }
+
     if (currentUkm || currentFotos.length > 0) {
-      showConfirm("Data Belum Disimpan", "Ada data UKM yang sedang kamu ketik tapi belum disimpan ke antrean.\n\nKlik 'Simpan & Kirim' untuk otomatis menyimpannya lalu mengirim semuanya ke server.", () => {
+      showConfirm("Data Belum Disimpan", "Ada data UKM yang sedang diketik tapi belum disimpan ke antrean.\n\nKlik 'Simpan & Kirim' untuk otomatis menyimpannya lalu mengirim semuanya.", () => {
            const newDraft = { id: Date.now(), namaUkm: currentUkm || "Data Tanpa Nama", fotos: currentFotos };
            const finalLaporans = [...laporans, newDraft];
            setCurrentUkm(''); setCurrentFotos([]); setLaporans(finalLaporans); executeSubmission(finalLaporans);
       }); return; 
     }
     if (laporans.length === 0) return showAlert("Antrean Kosong", "Belum ada data di Daftar Antrean.");
-    
-    // Tidak ada batas input, sistem bebas menerima sebanyak mungkin berkat kompresi!
     executeSubmission(laporans);
   };
+
+  if (isAuthLoading) return <div className="app-wrapper"><div className="form-title">Memuat Keamanan...</div></div>;
+
+  if (!user && auth) {
+    return (
+      <div className="app-wrapper login-wrapper">
+        <div className="form-card login-card">
+          <div className="login-logo">🛡️</div>
+          <h2 className="form-title">Portal Laporan MEDFO</h2>
+          <p className="login-subtitle">
+            Akses ke sistem pengiriman arsip ini dibatasi.<br/>
+            Silakan verifikasi identitas Anda menggunakan akun Google.
+          </p>
+          <button onClick={handleLogin} className="btn-google-login">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" />
+            Login dengan Google
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-wrapper">
       <div className="form-card">
+        {user && (
+          <div className="user-header">
+            <div className="user-info">
+              <img src={user.photoURL || 'https://via.placeholder.com/36'} alt="Profile" className="user-avatar" />
+              <div className="user-text">
+                <span className="user-name">{user.displayName || "Pengguna MEDFO"}</span>
+                <span className="user-email">{user.email}</span>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="btn-logout">Keluar</button>
+          </div>
+        )}
+
         <h2 className="form-title">Form UKM Report</h2>
         
+        {/* Latar Belakang Transparan untuk menutup dropdown jika area luar diklik */}
+        {openDropdown && <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>}
+
         <div className="section-heading"><span>1</span> Informasi Umum</div>
         <div className="global-section">
+          
+          {/* CUSTOM UI: DROPDOWN NAMA STAFF */}
           <div className="input-group">
-            <label className="form-label">Nama Penanggung Jawab:</label>
-            <input type="text" value={penanggungJawab} onChange={(e) => setPenanggungJawab(e.target.value)} className="form-input" placeholder="Cth: Budi Santoso" disabled={isLoading} />
+            <label className="form-label">Nama Penanggung Jawab (Staff Medfo):</label>
+            <div className="custom-select-wrapper">
+              <div 
+                className={`custom-select-trigger ${openDropdown === 'staff' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
+                onClick={() => !isLoading && setOpenDropdown(openDropdown === 'staff' ? null : 'staff')}
+              >
+                <div className="custom-select-value">
+                  {penanggungJawab ? (
+                    <><span>👤</span> <span>{penanggungJawab}</span></>
+                  ) : (
+                    <span className="custom-select-placeholder">-- Pilih Nama Kamu --</span>
+                  )}
+                </div>
+                <span className="chevron-icon">▼</span>
+              </div>
+
+              {openDropdown === 'staff' && (
+                <div className="custom-select-dropdown">
+                  {databaseStaff.map((name, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`custom-select-item ${penanggungJawab === name ? 'selected' : ''}`}
+                      onClick={() => { setPenanggungJawab(name); setOpenDropdown(null); }}
+                    >
+                      <span style={{ fontSize: '18px', opacity: penanggungJawab === name ? 1 : 0.7 }}>👤</span>
+                      <span>{name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* CUSTOM UI: DROPDOWN TANGGAL */}
           <div className="input-group">
             <label className="form-label">Tanggal Laporan:</label>
-            {/* Mengubah Input Date Bebas menjadi Dropdown Pintar */}
-            <select value={tanggal} onChange={(e) => setTanggal(e.target.value)} className="form-input" disabled={isLoading}>
-              <option value="">-- Pilih Hari Senin --</option>
-              {availableDates.map(date => (
-                <option key={date.value} value={date.value}>{date.label}</option>
-              ))}
-            </select>
+            <div className="custom-select-wrapper">
+              <div 
+                className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
+                onClick={() => !isLoading && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
+              >
+                <div className="custom-select-value">
+                  {tanggal ? (
+                    <><span>📅</span> <span>{availableDates.find(d => d.value === tanggal)?.label || tanggal}</span></>
+                  ) : (
+                    <span className="custom-select-placeholder">-- Pilih Hari Senin --</span>
+                  )}
+                </div>
+                <span className="chevron-icon">▼</span>
+              </div>
+
+              {openDropdown === 'date' && (
+                <div className="custom-select-dropdown">
+                  {availableDates.map((dateObj, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`custom-select-item ${tanggal === dateObj.value ? 'selected' : ''}`}
+                      onClick={() => { setTanggal(dateObj.value); setOpenDropdown(null); }}
+                    >
+                      <span style={{ fontSize: '18px', opacity: tanggal === dateObj.value ? 1 : 0.7 }}>📅</span>
+                      <span>{dateObj.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
         </div>
 
         <div className="section-heading"><span>2</span> Tambah Data Baru</div>
@@ -271,9 +395,9 @@ function App() {
                     <div className="file-chip" key={index}>
                       <div className="file-chip-info">
                         <img src={previewUrl} alt="preview" className="file-chip-thumbnail" />
-                        <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="file-chip-name" title="Klik untuk cek foto full">{foto.name}</a>
+                        <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="file-chip-name">{foto.name}</a>
                       </div>
-                      <button type="button" onClick={() => removeCurrentFoto(index)} className="file-chip-remove" title="Hapus foto ini" disabled={isLoading}>✕</button>
+                      <button type="button" onClick={() => removeCurrentFoto(index)} className="file-chip-remove" disabled={isLoading}>✕</button>
                     </div>
                   );
                 })}
