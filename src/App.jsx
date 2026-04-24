@@ -29,18 +29,6 @@ function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // --- DATABASE STAFF MUDA MEDFO ---
-  const databaseStaff = [
-    "Firda Ramadhani",
-    "Nailah Shafira Hafifi",
-    "Revi Naufal Maulana",
-    "Fitriyah Kamilah Maharani", 
-    "Farhan Deniel",
-    "Atta' Azzahra",
-    "Moch. Arya Mukti",
-    "I Putu Satwika Werdi Widagda Karang"
-  ];
-
   useEffect(() => {
     if (auth) {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -98,33 +86,67 @@ function App() {
   const [availableDates, setAvailableDates] = useState([]);
   useEffect(() => { setAvailableDates(getValidMondays()); }, []);
 
-  // State untuk Data Form
+  // State untuk Data Form & Validasi (Error Text)
   const [penanggungJawab, setPenanggungJawab] = useState('');
-  const [tanggal, setTanggal] = useState('');
-  const [laporans, setLaporans] = useState([]);
-  const [currentUkm, setCurrentUkm] = useState('');
-  const [currentFotos, setCurrentFotos] = useState([]);
+  const [nameError, setNameError] = useState(''); 
   
-  // State untuk Sistem Kinerja & UI
+  const [openDropdown, setOpenDropdown] = useState(null); 
+  const [tanggal, setTanggal] = useState('');
+  
+  const [currentUkm, setCurrentUkm] = useState('');
+  const [ukmError, setUkmError] = useState(''); 
+
+  const [laporans, setLaporans] = useState([]);
+  const [currentFotos, setCurrentFotos] = useState([]);
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
-  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null, onCancel: null });
-  
-  // State untuk mengontrol Custom Dropdown yang sedang terbuka
-  const [openDropdown, setOpenDropdown] = useState(null); // 'staff' | 'date' | null
 
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null, onCancel: null });
   const scriptURL = 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
 
   const showAlert = (title, message, type = 'warning') => setModal({ isOpen: true, title, message, type, onConfirm: closeModal });
   const showConfirm = (title, message, onConfirmCallback) => setModal({ isOpen: true, title, message, type: 'confirm', onConfirm: () => { onConfirmCallback(); closeModal(); }, onCancel: closeModal });
   const closeModal = () => setModal({ ...modal, isOpen: false });
 
+  // Regex untuk input nama: Menolak angka & Memastikan Huruf Kapital di Awal Kata
+  const handleNameChange = (e) => {
+    const value = e.target.value.replace(/[0-9]/g, ''); // Hapus angka
+    setPenanggungJawab(value);
+
+    // Cek jika ada huruf kecil di awal kalimat atau setelah spasi
+    if (value.trim() !== '' && /(?:^|\s)[a-z]/.test(value)) {
+      setNameError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: Mila)');
+    } else {
+      setNameError('');
+    }
+  };
+
+  // Regex untuk input UKM: Menolak koma, Wajib diawali "UKM", & Huruf Kapital
   const handleUkmChange = (e) => {
-    const value = e.target.value;
-    if (value.includes(',')) showAlert("Peringatan Validasi", "Mohon masukkan 1 nama UKM saja.\nTidak boleh menggunakan tanda koma (,).");
-    setCurrentUkm(value.replace(/,/g, ''));
+    let value = e.target.value;
+    
+    // Hapus tanda koma
+    if (value.includes(',')) {
+      showAlert("Peringatan Validasi", "Mohon masukkan 1 nama UKM saja.\nTidak boleh menggunakan tanda koma (,).");
+      value = value.replace(/,/g, '');
+    }
+    setCurrentUkm(value);
+
+    // Validasi Lapis 1: Harus diawali kata UKM (Kapital semua)
+    // Validasi Lapis 2: Awal kata berikutnya harus huruf besar
+    if (value.trim() !== '') {
+      if (!/^UKM(\s|$)/.test(value.trim())) {
+        setUkmError('Wajib diawali dengan kata "UKM" (Contoh: UKM Tari)');
+      } else if (/(?:^|\s)[a-z]/.test(value)) {
+        setUkmError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: UKM Tari)');
+      } else {
+        setUkmError('');
+      }
+    } else {
+      setUkmError('');
+    }
   };
 
   const handleFileChange = (event) => {
@@ -141,13 +163,15 @@ function App() {
   const removeCurrentFoto = (fotoIndex) => setCurrentFotos(currentFotos.filter((_, i) => i !== fotoIndex));
 
   const addToDraft = () => {
+    if (ukmError) return showAlert("Format Penulisan Salah", "Mohon perbaiki penulisan Nama UKM terlebih dahulu.\n" + ukmError, "error");
     if (!currentUkm.trim()) return showAlert("Data Belum Lengkap", "Kolom 'Nama UKM' wajib diisi!");
     if (currentFotos.length === 0) return showAlert("Data Belum Lengkap", "Pilih minimal 1 foto hasil dokumentasi!");
+    
     const isDuplicate = laporans.some(laporan => laporan.namaUkm.toLowerCase() === currentUkm.trim().toLowerCase());
     if (isDuplicate) return showAlert("Duplikat Terdeteksi", `UKM "${currentUkm.trim()}" sudah ada di dalam antrean.`, "error");
 
     setLaporans([...laporans, { id: Date.now(), namaUkm: currentUkm, fotos: currentFotos }]);
-    setCurrentUkm(''); setCurrentFotos([]);
+    setCurrentUkm(''); setCurrentFotos([]); setUkmError('');
   };
 
   const removeDraft = (id) => setLaporans(laporans.filter(l => l.id !== id));
@@ -235,13 +259,11 @@ function App() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!penanggungJawab || !tanggal) return showAlert("Informasi Belum Lengkap", "Kolom Penanggung Jawab dan Tanggal wajib dipilih!");
-    
-    if (!databaseStaff.includes(penanggungJawab)) {
-      return showAlert("Akses Ditolak", "Nama yang Anda masukkan tidak terdaftar sebagai Staff Muda Medfo.\nSilakan cari dan pilih dari daftar yang tersedia.", "error");
-    }
+    if (nameError) return showAlert("Format Penulisan Salah", "Mohon perbaiki penulisan Nama Penanggung Jawab.\nPastikan setiap awal kata menggunakan huruf kapital.", "error");
+    if (!penanggungJawab.trim() || !tanggal) return showAlert("Informasi Belum Lengkap", "Kolom Penanggung Jawab dan Tanggal wajib diisi!");
 
     if (currentUkm || currentFotos.length > 0) {
+      if (ukmError) return showAlert("Format Penulisan Salah", "Mohon perbaiki penulisan Nama UKM sebelum melanjutkan.", "error");
       showConfirm("Data Belum Disimpan", "Ada data UKM yang sedang diketik tapi belum disimpan ke antrean.\n\nKlik 'Simpan & Kirim' untuk otomatis menyimpannya lalu mengirim semuanya.", () => {
            const newDraft = { id: Date.now(), namaUkm: currentUkm || "Data Tanpa Nama", fotos: currentFotos };
            const finalLaporans = [...laporans, newDraft];
@@ -291,54 +313,58 @@ function App() {
 
         <h2 className="form-title">Form UKM Report</h2>
         
-        {/* Latar Belakang Transparan untuk menutup dropdown jika area luar diklik */}
         {openDropdown && <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>}
 
         <div className="section-heading"><span>1</span> Informasi Umum</div>
         <div className="global-section">
           
-          {/* CUSTOM UI: DROPDOWN NAMA STAFF */}
           <div className="input-group">
             <label className="form-label">Nama Penanggung Jawab (Staff Medfo):</label>
-            <div className="custom-select-wrapper">
-              <div 
-                className={`custom-select-trigger ${openDropdown === 'staff' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
-                onClick={() => !isLoading && setOpenDropdown(openDropdown === 'staff' ? null : 'staff')}
-              >
-                <div className="custom-select-value">
-                  {penanggungJawab ? (
-                    <><span>👤</span> <span>{penanggungJawab}</span></>
-                  ) : (
-                    <span className="custom-select-placeholder">-- Pilih Nama Kamu --</span>
-                  )}
-                </div>
-                <span className="chevron-icon">▼</span>
+            <input 
+              type="text" 
+              value={penanggungJawab} 
+              onChange={handleNameChange} 
+              className="form-input" 
+              placeholder="Cth: Mila" 
+              disabled={isLoading} 
+              style={{ 
+                height: '52px', 
+                boxSizing: 'border-box',
+                borderColor: nameError ? '#ef4444' : undefined,
+                outlineColor: nameError ? '#ef4444' : undefined,
+                backgroundColor: nameError ? '#fef2f2' : undefined
+              }}
+            />
+            {/* Pesan Error Muncul di sini secara langsung */}
+            {nameError && (
+              <div style={{ 
+                color: '#b91c1c', 
+                backgroundColor: '#fef2f2', 
+                border: '1px solid #fecaca', 
+                padding: '10px 12px', 
+                borderRadius: '8px', 
+                fontSize: '13px', 
+                marginTop: '4px', 
+                fontWeight: '600', 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: '8px', 
+                lineHeight: '1.4',
+                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)'
+              }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span>{nameError}</span>
               </div>
-
-              {openDropdown === 'staff' && (
-                <div className="custom-select-dropdown">
-                  {databaseStaff.map((name, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`custom-select-item ${penanggungJawab === name ? 'selected' : ''}`}
-                      onClick={() => { setPenanggungJawab(name); setOpenDropdown(null); }}
-                    >
-                      <span style={{ fontSize: '18px', opacity: penanggungJawab === name ? 1 : 0.7 }}>👤</span>
-                      <span>{name}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* CUSTOM UI: DROPDOWN TANGGAL */}
           <div className="input-group">
             <label className="form-label">Tanggal Laporan:</label>
             <div className="custom-select-wrapper">
               <div 
                 className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
                 onClick={() => !isLoading && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
+                style={{ height: '52px', boxSizing: 'border-box' }}
               >
                 <div className="custom-select-value">
                   {tanggal ? (
@@ -373,7 +399,42 @@ function App() {
         <div className="active-form-section">
           <div className="input-group">
             <label className="form-label">Nama UKM:</label>
-            <input type="text" value={currentUkm} onChange={handleUkmChange} className="form-input" placeholder="Cth: UKM Sepak Bola" disabled={isLoading} />
+            <input 
+              type="text" 
+              value={currentUkm} 
+              onChange={handleUkmChange} 
+              className="form-input" 
+              placeholder="Cth: UKM Tari" 
+              disabled={isLoading} 
+              style={{ 
+                height: '52px', 
+                boxSizing: 'border-box',
+                borderColor: ukmError ? '#ef4444' : undefined,
+                outlineColor: ukmError ? '#ef4444' : undefined,
+                backgroundColor: ukmError ? '#fef2f2' : undefined
+              }}
+            />
+            {/* Pesan Error Muncul di sini secara langsung */}
+            {ukmError && (
+              <div style={{ 
+                color: '#b91c1c', 
+                backgroundColor: '#fef2f2', 
+                border: '1px solid #fecaca', 
+                padding: '10px 12px', 
+                borderRadius: '8px', 
+                fontSize: '13px', 
+                marginTop: '4px', 
+                fontWeight: '600', 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: '8px', 
+                lineHeight: '1.4',
+                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)'
+              }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span>{ukmError}</span>
+              </div>
+            )}
           </div>
           
           <div className="input-group">
