@@ -134,8 +134,6 @@ function App() {
     }
     setCurrentUkm(value);
 
-    // Validasi Lapis 1: Harus diawali kata UKM (Kapital semua)
-    // Validasi Lapis 2: Awal kata berikutnya harus huruf besar
     if (value.trim() !== '') {
       if (!/^UKM(\s|$)/.test(value.trim())) {
         setUkmError('Wajib diawali dengan kata "UKM" (Contoh: UKM Tari)');
@@ -197,63 +195,79 @@ function App() {
     });
   };
 
-  const processAllFiles = async (laporanListToProcess) => {
-    const results = [];
-    for (let i = 0; i < laporanListToProcess.length; i++) {
-      const item = laporanListToProcess[i];
-      setProcessingId(item.id); setUploadProgress(prev => ({ ...prev, [item.id]: 10 }));
-      await new Promise(resolve => setTimeout(resolve, 50)); 
-      const amanUkmName = item.namaUkm.replace(/[^a-zA-Z0-9 ]/g, "").trim();
-      const processedFotos = [];
-      for (let f = 0; f < item.fotos.length; f++) {
-         const compressedBase64 = await compressImage(item.fotos[f]);
-         processedFotos.push({ fileName: `${amanUkmName} - Foto ${f + 1}.jpg`, mimeType: 'image/jpeg', fileBase64: compressedBase64 });
-         setUploadProgress(prev => ({ ...prev, [item.id]: 10 + Math.floor(((f + 1) / item.fotos.length) * 40) }));
-      }
-      results.push({ namaUkm: item.namaUkm, files: processedFotos });
-    }
-    setProcessingId('sending'); return results;
-  };
-
+  // --- ARSITEKTUR BARU: SEQUENTIAL UPLOAD (SATU PER SATU) ---
   const executeSubmission = async (finalLaporanList) => {
-    let progressInterval;
+    setIsLoading(true);
+    setStatus(`Memulai pengiriman ${finalLaporanList.length} antrean...`);
+    let hasError = false;
+    const successfulIds = []; // Mencatat ID yang sudah sukses agar tidak hilang kalau error di tengah
+
     try {
-      setIsLoading(true);
-      const laporanListProcessed = await processAllFiles(finalLaporanList);
-      setStatus(`Mengirim ${finalLaporanList.length} data ke server...`);
+      // Loop untuk memproses dan mengirim data SATU PER SATU
+      for (let i = 0; i < finalLaporanList.length; i++) {
+        const item = finalLaporanList[i];
+        setProcessingId(item.id);
+        setStatus(`Mengirim data ${i + 1} dari ${finalLaporanList.length}...`);
+        setUploadProgress(prev => ({ ...prev, [item.id]: 10 }));
 
-      progressInterval = setInterval(() => {
-         setUploadProgress(prev => {
-            const nextProgress = { ...prev }; let allHit90 = true;
-            finalLaporanList.forEach(l => {
-               if (!nextProgress[l.id]) nextProgress[l.id] = 50;
-               if (nextProgress[l.id] < 90) { nextProgress[l.id] += Math.floor(Math.random() * 5) + 1; allHit90 = false; }
-            });
-            if (allHit90) clearInterval(progressInterval);
-            return nextProgress;
-         });
-      }, 500);
+        // 1. Kompres dan siapkan foto HANYA untuk 1 UKM ini
+        const amanUkmName = item.namaUkm.replace(/[^a-zA-Z0-9 ]/g, "").trim();
+        const processedFotos = [];
+        for (let f = 0; f < item.fotos.length; f++) {
+           const compressedBase64 = await compressImage(item.fotos[f]);
+           processedFotos.push({ 
+              fileName: item.fotos.length > 1 ? `${amanUkmName} (${f + 1}).jpg` : `${amanUkmName}.jpg`, 
+              mimeType: 'image/jpeg', 
+              fileBase64: compressedBase64 
+           });
+           setUploadProgress(prev => ({ ...prev, [item.id]: 10 + Math.floor(((f + 1) / item.fotos.length) * 40) }));
+        }
 
-      const payload = { penanggungJawab, tanggal, laporanList: laporanListProcessed, userEmail: user?.email || "Unknown" };
-      const response = await fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) });
-      const result = await response.json();
+        setUploadProgress(prev => ({ ...prev, [item.id]: 60 }));
 
-      clearInterval(progressInterval);
+        // 2. Siapkan Paket Data yang kecil (hanya 1 UKM per request)
+        const payload = { 
+          penanggungJawab, 
+          tanggal, 
+          laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }], // Kirim sebagai array isi 1
+          userEmail: user?.email || "Unknown" 
+        };
 
-      if (result.status === "success") {
-        const finalProgress = {}; finalLaporanList.forEach(l => finalProgress[l.id] = 100);
-        setUploadProgress(finalProgress); await new Promise(res => setTimeout(res, 600));
+        // 3. Tembak API Google Apps Script
+        const response = await fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) });
+        const result = await response.json();
 
-        showAlert("🎉 BERHASIL!", `${finalLaporanList.length} data laporan UKM telah sukses dikirim.`, "success");
-        setStatus(`Mantap! ${result.message}`); setLaporans([]); setPenanggungJawab(''); setTanggal(''); setCurrentUkm(''); setCurrentFotos([]); setProcessingId(null); setUploadProgress({});
-        setTimeout(() => setStatus(''), 5000);
-      } else {
-        showAlert("Pengiriman Gagal", result.message, "error"); setStatus(`Gagal: ${result.message}`); setProcessingId(null);
+        // 4. Evaluasi hasil
+        if (result.status === "success") {
+          setUploadProgress(prev => ({ ...prev, [item.id]: 100 }));
+          successfulIds.push(item.id);
+          await new Promise(res => setTimeout(res, 500)); // Jeda sedikit agar user melihat 100%
+        } else {
+          showAlert("Pengiriman Gagal", `Gagal mengirim data UKM: ${item.namaUkm}.\nAlasan: ${result.message}`, "error");
+          setUploadProgress(prev => ({ ...prev, [item.id]: 0 }));
+          hasError = true;
+          break; // HENTIKAN LOOP jika ada 1 error (Timeout dll)
+        }
       }
+
+      // Finalisasi setelah Loop Selesai atau Terhenti
+      if (!hasError) {
+        showAlert("🎉 BERHASIL!", `Semua ${finalLaporanList.length} data laporan UKM telah sukses dikirim tanpa hambatan.`, "success");
+        setLaporans([]); // Kosongkan keranjang
+        setCurrentUkm(''); setCurrentFotos([]); setUkmError('');
+      } else {
+        // Jika terputus di tengah, bersihkan keranjang dari item yang SUDAH BERHASIL saja.
+        setLaporans(prev => prev.filter(draft => !successfulIds.includes(draft.id)));
+      }
+
     } catch (error) {
-      showAlert("Terjadi Kesalahan Server", "Gagal memproses data atau koneksi terputus.", "error"); setStatus("Gagal memproses data."); setProcessingId(null); clearInterval(progressInterval);
+      showAlert("Terjadi Kesalahan Koneksi", "Koneksi internet terputus atau server sibuk saat memproses data.\nAntrean yang belum terkirim masih aman di keranjang, silakan coba kirim ulang.", "error");
+      // Pertahankan item yang gagal/belum terproses di draft
+      setLaporans(prev => prev.filter(draft => !successfulIds.includes(draft.id)));
     } finally {
       setIsLoading(false);
+      setProcessingId(null);
+      setTimeout(() => setStatus(''), 5000);
     }
   };
 
