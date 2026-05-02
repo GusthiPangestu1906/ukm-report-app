@@ -3,9 +3,9 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import './App.css';
 
-// KUNCI RAHASIA FIREBASE MEDFO
+// KUNCI RAHASIA FIREBASE MEDFO (100% AMAN, HANYA BACA DARI .ENV)
 const firebaseConfig = {
-  apiKey: "AIzaSyDGbcjk4lmZg3OU9h65aSifBE8VGF5hwUc",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "medfo-auth-85df1.firebaseapp.com",
   projectId: "medfo-auth-85df1",
   storageBucket: "medfo-auth-85df1.firebasestorage.app",
@@ -29,6 +29,53 @@ function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+  // --- STATE UNTUK KALENDER & BULAN ---
+  const [openDropdown, setOpenDropdown] = useState(null); 
+  const [bulanOptions, setBulanOptions] = useState([]);
+  const [selectedBulan, setSelectedBulan] = useState('');
+  const [availableDates, setAvailableDates] = useState([]);
+  const [tanggal, setTanggal] = useState('');
+
+  // Generate daftar 2 Bulan terakhir (Bulan ini & Bulan lalu)
+  useEffect(() => {
+    const options = [];
+    const namaBulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const d = new Date();
+    
+    for(let i = 0; i < 2; i++) { // <--- UBAH JADI 2 DI SINI
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const val = `${y}-${String(m + 1).padStart(2, '0')}`;
+      const label = `${namaBulanIndo[m]} ${y}`;
+      options.push({ value: val, label: label });
+      d.setMonth(m - 1); 
+    }
+    
+    setBulanOptions(options);
+    setSelectedBulan(options[0].value); 
+  }, []);
+
+  // Generate Hari Senin berdasarkan Bulan yang dipilih
+  useEffect(() => {
+    if (!selectedBulan) return;
+    
+    const mondays = [];
+    const [year, month] = selectedBulan.split('-').map(Number);
+    const date = new Date(year, month - 1, 1);
+    
+    while (date.getMonth() === month - 1) {
+      if (date.getDay() === 1) { 
+        const d = String(date.getDate()).padStart(2, '0');
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        mondays.push({ value: `${date.getFullYear()}-${m}-${d}`, label: `Senin, ${d}/${m}/${date.getFullYear()}` });
+      }
+      date.setDate(date.getDate() + 1);
+    }
+    
+    setAvailableDates(mondays);
+    setTanggal(''); 
+  }, [selectedBulan]);
+
   useEffect(() => {
     if (auth) {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -45,9 +92,7 @@ function App() {
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
-      if (error.code !== 'auth/popup-closed-by-user') {
-        alert("Gagal Login: " + error.message);
-      }
+      if (error.code !== 'auth/popup-closed-by-user') alert("Gagal Login: " + error.message);
     }
   };
 
@@ -56,46 +101,11 @@ function App() {
     setUser(null);
   };
 
-  const getValidMondays = () => {
-    const mondays = [];
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const date = new Date(year, month, 1);
-    while (date.getMonth() === month) {
-      if (date.getDay() === 1) { 
-        const isPast = date.setHours(0,0,0,0) < now.setHours(0,0,0,0);
-        if (!isPast) {
-           const d = String(date.getDate()).padStart(2, '0');
-           const m = String(date.getMonth() + 1).padStart(2, '0');
-           mondays.push({ value: `${date.getFullYear()}-${m}-${d}`, label: `Senin, ${d}/${m}/${date.getFullYear()}` });
-        }
-      }
-      date.setDate(date.getDate() + 1);
-    }
-    if (mondays.length === 0) {
-       const nextMonthDate = new Date(year, month + 1, 1);
-       while (nextMonthDate.getDay() !== 1) nextMonthDate.setDate(nextMonthDate.getDate() + 1);
-       const d = String(nextMonthDate.getDate()).padStart(2, '0');
-       const m = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
-       mondays.push({ value: `${nextMonthDate.getFullYear()}-${m}-${d}`, label: `Senin, ${d}/${m}/${nextMonthDate.getFullYear()}` });
-    }
-    return mondays;
-  };
-
-  const [availableDates, setAvailableDates] = useState([]);
-  useEffect(() => { setAvailableDates(getValidMondays()); }, []);
-
-  // State untuk Data Form & Validasi (Error Text)
+  // State Form Utama
   const [penanggungJawab, setPenanggungJawab] = useState('');
   const [nameError, setNameError] = useState(''); 
-  
-  const [openDropdown, setOpenDropdown] = useState(null); 
-  const [tanggal, setTanggal] = useState('');
-  
   const [currentUkm, setCurrentUkm] = useState('');
   const [ukmError, setUkmError] = useState(''); 
-
   const [laporans, setLaporans] = useState([]);
   const [currentFotos, setCurrentFotos] = useState([]);
   const [status, setStatus] = useState('');
@@ -103,48 +113,70 @@ function App() {
   const [processingId, setProcessingId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
 
+  const [historyData, setHistoryData] = useState([]);
+  const [submittedUkms, setSubmittedUkms] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: null, onCancel: null });
+  
   const scriptURL = 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
 
   const showAlert = (title, message, type = 'warning') => setModal({ isOpen: true, title, message, type, onConfirm: closeModal });
   const showConfirm = (title, message, onConfirmCallback) => setModal({ isOpen: true, title, message, type: 'confirm', onConfirm: () => { onConfirmCallback(); closeModal(); }, onCancel: closeModal });
   const closeModal = () => setModal({ ...modal, isOpen: false });
 
-  // Regex untuk input nama: Menolak angka & Memastikan Huruf Kapital di Awal Kata
-  const handleNameChange = (e) => {
-    const value = e.target.value.replace(/[0-9]/g, ''); // Hapus angka
-    setPenanggungJawab(value);
+  // Sinkronisasi data riwayat awal
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setIsLoadingHistory(true);
+      try {
+        const response = await fetch(scriptURL);
+        const result = await response.json();
+        if (result.status === "success") setHistoryData(result.data);
+      } catch (error) {
+        console.error("Gagal menarik data riwayat:", error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+    if (user) fetchHistory();
+  }, [user]);
 
-    // Cek jika ada huruf kecil di awal kalimat atau setelah spasi
-    if (value.trim() !== '' && /(?:^|\s)[a-z]/.test(value)) {
-      setNameError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: Mila)');
+  // Update riwayat ketika Tanggal berubah
+  useEffect(() => {
+    if (tanggal && historyData.length > 0) {
+      const ukmsForDate = historyData.filter(item => item.tanggal === tanggal).map(item => item.ukm);
+      setSubmittedUkms(ukmsForDate);
     } else {
-      setNameError('');
+      setSubmittedUkms([]);
     }
+  }, [tanggal, historyData]);
+
+  // Otomatis mengisi nama dari akun Google
+  useEffect(() => {
+    if (user && !penanggungJawab) {
+      setPenanggungJawab(user.displayName || user.email.split('@')[0]);
+    }
+  }, [user]);
+
+  const handleNameChange = (e) => {
+    const value = e.target.value.replace(/[0-9]/g, '');
+    setPenanggungJawab(value);
+    if (value.trim() !== '' && /(?:^|\s)[a-z]/.test(value)) setNameError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: Budi Santoso)');
+    else setNameError('');
   };
 
-  // Regex untuk input UKM: Menolak koma, Wajib diawali "UKM", & Huruf Kapital
   const handleUkmChange = (e) => {
     let value = e.target.value;
-    
-    // Hapus tanda koma
     if (value.includes(',')) {
       showAlert("Peringatan Validasi", "Mohon masukkan 1 nama UKM saja.\nTidak boleh menggunakan tanda koma (,).");
       value = value.replace(/,/g, '');
     }
     setCurrentUkm(value);
-
     if (value.trim() !== '') {
-      if (!/^UKM(\s|$)/.test(value.trim())) {
-        setUkmError('Wajib diawali dengan kata "UKM" (Contoh: UKM Tari)');
-      } else if (/(?:^|\s)[a-z]/.test(value)) {
-        setUkmError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: UKM Tari)');
-      } else {
-        setUkmError('');
-      }
-    } else {
-      setUkmError('');
-    }
+      if (!/^UKM(\s|$)/.test(value.trim())) setUkmError('Wajib diawali dengan kata "UKM" (Contoh: UKM Tari)');
+      else if (/(?:^|\s)[a-z]/.test(value)) setUkmError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: UKM Tari)');
+      else setUkmError('');
+    } else setUkmError('');
   };
 
   const handleFileChange = (event) => {
@@ -195,22 +227,19 @@ function App() {
     });
   };
 
-  // --- ARSITEKTUR BARU: SEQUENTIAL UPLOAD (SATU PER SATU) ---
   const executeSubmission = async (finalLaporanList) => {
     setIsLoading(true);
     setStatus(`Memulai pengiriman ${finalLaporanList.length} antrean...`);
     let hasError = false;
-    const successfulIds = []; // Mencatat ID yang sudah sukses agar tidak hilang kalau error di tengah
+    const successfulIds = []; 
 
     try {
-      // Loop untuk memproses dan mengirim data SATU PER SATU
       for (let i = 0; i < finalLaporanList.length; i++) {
         const item = finalLaporanList[i];
         setProcessingId(item.id);
         setStatus(`Mengirim data ${i + 1} dari ${finalLaporanList.length}...`);
         setUploadProgress(prev => ({ ...prev, [item.id]: 10 }));
 
-        // 1. Kompres dan siapkan foto HANYA untuk 1 UKM ini
         const amanUkmName = item.namaUkm.replace(/[^a-zA-Z0-9 ]/g, "").trim();
         const processedFotos = [];
         for (let f = 0; f < item.fotos.length; f++) {
@@ -225,49 +254,73 @@ function App() {
 
         setUploadProgress(prev => ({ ...prev, [item.id]: 60 }));
 
-        // 2. Siapkan Paket Data yang kecil (hanya 1 UKM per request)
         const payload = { 
           penanggungJawab, 
           tanggal, 
-          laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }], // Kirim sebagai array isi 1
+          laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }],
           userEmail: user?.email || "Unknown" 
         };
 
-        // 3. Tembak API Google Apps Script
         const response = await fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) });
         const result = await response.json();
 
-        // 4. Evaluasi hasil
         if (result.status === "success") {
           setUploadProgress(prev => ({ ...prev, [item.id]: 100 }));
           successfulIds.push(item.id);
-          await new Promise(res => setTimeout(res, 500)); // Jeda sedikit agar user melihat 100%
+          
+          // Refresh background data secara diam-diam agar tanda centang update
+          try {
+            const historyResp = await fetch(scriptURL);
+            const historyResult = await historyResp.json();
+            if (historyResult.status === "success") setHistoryData(historyResult.data);
+          } catch(e) {}
+
+          await new Promise(res => setTimeout(res, 500)); 
         } else {
           showAlert("Pengiriman Gagal", `Gagal mengirim data UKM: ${item.namaUkm}.\nAlasan: ${result.message}`, "error");
           setUploadProgress(prev => ({ ...prev, [item.id]: 0 }));
           hasError = true;
-          break; // HENTIKAN LOOP jika ada 1 error (Timeout dll)
+          break; 
         }
       }
 
-      // Finalisasi setelah Loop Selesai atau Terhenti
       if (!hasError) {
-        showAlert("🎉 BERHASIL!", `Semua ${finalLaporanList.length} data laporan UKM telah sukses dikirim tanpa hambatan.`, "success");
-        setLaporans([]); // Kosongkan keranjang
+        showAlert("🎉 BERHASIL!", `Semua ${finalLaporanList.length} data laporan UKM telah sukses dikirim ke Server.`, "success");
+        setLaporans([]); 
         setCurrentUkm(''); setCurrentFotos([]); setUkmError('');
       } else {
-        // Jika terputus di tengah, bersihkan keranjang dari item yang SUDAH BERHASIL saja.
         setLaporans(prev => prev.filter(draft => !successfulIds.includes(draft.id)));
       }
 
     } catch (error) {
       showAlert("Terjadi Kesalahan Koneksi", "Koneksi internet terputus atau server sibuk saat memproses data.\nAntrean yang belum terkirim masih aman di keranjang, silakan coba kirim ulang.", "error");
-      // Pertahankan item yang gagal/belum terproses di draft
       setLaporans(prev => prev.filter(draft => !successfulIds.includes(draft.id)));
     } finally {
       setIsLoading(false);
       setProcessingId(null);
       setTimeout(() => setStatus(''), 5000);
+    }
+  };
+
+  const checkKeterlambatan = (tanggalLaporan) => {
+    if (!tanggalLaporan) return false;
+    const waktuSubmit = new Date();
+    const deadline = new Date(tanggalLaporan);
+    deadline.setDate(deadline.getDate() + 2); // Batas hari Selasa 23:59
+    deadline.setHours(0, 0, 0, 0);
+    return waktuSubmit.getTime() > deadline.getTime();
+  };
+
+  const processSubmission = (finalLaporans) => {
+    const isLate = checkKeterlambatan(tanggal);
+    if (isLate) {
+      showConfirm(
+        "Peringatan Keterlambatan 🔴",
+        "Laporan ini telah melewati batas waktu yang ditentukan (Selasa jam 23:59).\n\nData akan tetap terkirim, namun akan dicatat dengan status 'Terlambat' di dalam sistem Google Sheets.\n\nApakah Anda yakin ingin melanjutkan?",
+        () => executeSubmission(finalLaporans)
+      );
+    } else {
+      executeSubmission(finalLaporans);
     }
   };
 
@@ -281,11 +334,13 @@ function App() {
       showConfirm("Data Belum Disimpan", "Ada data UKM yang sedang diketik tapi belum disimpan ke antrean.\n\nKlik 'Simpan & Kirim' untuk otomatis menyimpannya lalu mengirim semuanya.", () => {
            const newDraft = { id: Date.now(), namaUkm: currentUkm || "Data Tanpa Nama", fotos: currentFotos };
            const finalLaporans = [...laporans, newDraft];
-           setCurrentUkm(''); setCurrentFotos([]); setLaporans(finalLaporans); executeSubmission(finalLaporans);
+           setCurrentUkm(''); setCurrentFotos([]); setLaporans(finalLaporans);
+           setTimeout(() => { processSubmission(finalLaporans); }, 400);
       }); return; 
     }
+    
     if (laporans.length === 0) return showAlert("Antrean Kosong", "Belum ada data di Daftar Antrean.");
-    executeSubmission(laporans);
+    processSubmission(laporans);
   };
 
   if (isAuthLoading) return <div className="app-wrapper"><div className="form-title">Memuat Keamanan...</div></div>;
@@ -318,7 +373,7 @@ function App() {
               <img src={user.photoURL || 'https://via.placeholder.com/36'} alt="Profile" className="user-avatar" />
               <div className="user-text">
                 <span className="user-name">{user.displayName || "Pengguna MEDFO"}</span>
-                <span className="user-email">{user.email}</span>
+                <span className="user-email">Staf Terverifikasi ({user.email})</span>
               </div>
             </div>
             <button onClick={handleLogout} className="btn-logout">Keluar</button>
@@ -326,80 +381,42 @@ function App() {
         )}
 
         <h2 className="form-title">Form UKM Report</h2>
-        
         {openDropdown && <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>}
 
         <div className="section-heading"><span>1</span> Informasi Umum</div>
         <div className="global-section">
           
           <div className="input-group">
-            <label className="form-label">Nama Penanggung Jawab (Staff Medfo):</label>
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Nama Penanggung Jawab (Staff Medfo):</label>
             <input 
-              type="text" 
-              value={penanggungJawab} 
-              onChange={handleNameChange} 
-              className="form-input" 
-              placeholder="Cth: Mila" 
-              disabled={isLoading} 
-              style={{ 
-                height: '52px', 
-                boxSizing: 'border-box',
-                borderColor: nameError ? '#ef4444' : undefined,
-                outlineColor: nameError ? '#ef4444' : undefined,
-                backgroundColor: nameError ? '#fef2f2' : undefined
-              }}
+              type="text" value={penanggungJawab} onChange={handleNameChange} className="form-input" placeholder="Cth: Mila" disabled={isLoading} 
+              style={{ height: '52px', boxSizing: 'border-box', borderColor: nameError ? '#ef4444' : undefined, outlineColor: nameError ? '#ef4444' : undefined, backgroundColor: nameError ? '#fef2f2' : undefined }}
             />
-            {/* Pesan Error Muncul di sini secara langsung */}
             {nameError && (
-              <div style={{ 
-                color: '#b91c1c', 
-                backgroundColor: '#fef2f2', 
-                border: '1px solid #fecaca', 
-                padding: '10px 12px', 
-                borderRadius: '8px', 
-                fontSize: '13px', 
-                marginTop: '4px', 
-                fontWeight: '600', 
-                display: 'flex', 
-                alignItems: 'flex-start', 
-                gap: '8px', 
-                lineHeight: '1.4',
-                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)'
-              }}>
-                <span style={{ fontSize: '16px' }}>⚠️</span>
-                <span>{nameError}</span>
+              <div style={{ color: '#b91c1c', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', marginTop: '4px', fontWeight: '600', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)' }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span><span>{nameError}</span>
               </div>
             )}
           </div>
 
           <div className="input-group">
-            <label className="form-label">Tanggal Laporan:</label>
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Bulan Laporan:</label>
             <div className="custom-select-wrapper">
               <div 
-                className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
-                onClick={() => !isLoading && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
-                style={{ height: '52px', boxSizing: 'border-box' }}
+                className={`custom-select-trigger ${openDropdown === 'month' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
+                onClick={() => !isLoading && setOpenDropdown(openDropdown === 'month' ? null : 'month')}
+                style={{ height: '52px', boxSizing: 'border-box', backgroundColor: '#f8fafc' }}
               >
                 <div className="custom-select-value">
-                  {tanggal ? (
-                    <><span>📅</span> <span>{availableDates.find(d => d.value === tanggal)?.label || tanggal}</span></>
-                  ) : (
-                    <span className="custom-select-placeholder">-- Pilih Hari Senin --</span>
-                  )}
+                  <span>🗓️</span> <span>{bulanOptions.find(b => b.value === selectedBulan)?.label || '-- Pilih Bulan --'}</span>
                 </div>
                 <span className="chevron-icon">▼</span>
               </div>
-
-              {openDropdown === 'date' && (
+              {openDropdown === 'month' && (
                 <div className="custom-select-dropdown">
-                  {availableDates.map((dateObj, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`custom-select-item ${tanggal === dateObj.value ? 'selected' : ''}`}
-                      onClick={() => { setTanggal(dateObj.value); setOpenDropdown(null); }}
-                    >
-                      <span style={{ fontSize: '18px', opacity: tanggal === dateObj.value ? 1 : 0.7 }}>📅</span>
-                      <span>{dateObj.label}</span>
+                  {bulanOptions.map((b, idx) => (
+                    <div key={idx} className={`custom-select-item ${selectedBulan === b.value ? 'selected' : ''}`} onClick={() => { setSelectedBulan(b.value); setOpenDropdown(null); }}>
+                      <span style={{ fontSize: '18px', opacity: selectedBulan === b.value ? 1 : 0.7 }}>🗓️</span><span>{b.label}</span>
                     </div>
                   ))}
                 </div>
@@ -407,52 +424,89 @@ function App() {
             </div>
           </div>
 
+          <div className="input-group">
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Tanggal Laporan (Hari Senin):</label>
+            <div className="custom-select-wrapper">
+              <div 
+                className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
+                onClick={() => !isLoading && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
+                style={{ height: '52px', boxSizing: 'border-box' }}
+              >
+                <div className="custom-select-value">
+                  {tanggal ? (() => {
+                    const hasReport = historyData.some(h => h.tanggal === tanggal);
+                    return (
+                      <>
+                        <span>📅</span> 
+                        <span>
+                          {availableDates.find(d => d.value === tanggal)?.label || tanggal} 
+                          {hasReport && <span style={{ marginLeft: '6px' }}>✅</span>}
+                        </span>
+                      </>
+                    );
+                  })() : (
+                    <span className="custom-select-placeholder">-- Pilih Hari Senin --</span>
+                  )}
+                </div>
+                <span className="chevron-icon">▼</span>
+              </div>
+              
+              {/* DROPDOWN TANGGAL DENGAN TANDA CENTANG ✅ */}
+              {openDropdown === 'date' && (
+                <div className="custom-select-dropdown">
+                  {availableDates.length > 0 ? availableDates.map((dateObj, idx) => {
+                    // Cek apakah di database sudah ada data untuk tanggal ini
+                    const hasReport = historyData.some(h => h.tanggal === dateObj.value);
+                    return (
+                    <div key={idx} className={`custom-select-item ${tanggal === dateObj.value ? 'selected' : ''}`} onClick={() => { setTanggal(dateObj.value); setOpenDropdown(null); }}>
+                      <span style={{ fontSize: '18px', opacity: tanggal === dateObj.value ? 1 : 0.7 }}>📅</span>
+                      <span>
+                        {dateObj.label} 
+                        {hasReport && <span style={{ marginLeft: '6px' }}>✅</span>}
+                      </span>
+                    </div>
+                  )}) : (
+                    <div className="custom-select-item" style={{justifyContent: 'center', color: '#94a3b8', cursor: 'default'}}>Tidak ada hari Senin di bulan ini</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Versi Super Bersih untuk Informasi Bawah (Hanya Teks Singkat) */}
+          <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+            {!tanggal ? (
+              <span style={{ fontSize: '13px', color: '#64748b' }}>Pilih tanggal untuk melihat status laporan.</span>
+            ) : isLoadingHistory ? (
+              <span style={{ fontSize: '13px', color: '#64748b' }}>⏳ Memuat...</span>
+            ) : submittedUkms.length > 0 ? (
+              <span style={{ fontSize: '13px', color: '#166534', fontWeight: '600' }}>
+                ✅ Sudah ada {submittedUkms.length} laporan UKM yang masuk di tanggal ini.
+              </span>
+            ) : (
+              <span style={{ fontSize: '13px', color: '#64748b' }}>Belum ada laporan di tanggal ini. Kamu yang pertama! 🚀</span>
+            )}
+          </div>
+
         </div>
 
         <div className="section-heading"><span>2</span> Tambah Data Baru</div>
         <div className="active-form-section">
           <div className="input-group">
-            <label className="form-label">Nama UKM:</label>
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Nama UKM:</label>
             <input 
-              type="text" 
-              value={currentUkm} 
-              onChange={handleUkmChange} 
-              className="form-input" 
-              placeholder="Cth: UKM Tari" 
-              disabled={isLoading} 
-              style={{ 
-                height: '52px', 
-                boxSizing: 'border-box',
-                borderColor: ukmError ? '#ef4444' : undefined,
-                outlineColor: ukmError ? '#ef4444' : undefined,
-                backgroundColor: ukmError ? '#fef2f2' : undefined
-              }}
+              type="text" value={currentUkm} onChange={handleUkmChange} className="form-input" placeholder="Cth: UKM Tari" disabled={isLoading} 
+              style={{ height: '52px', boxSizing: 'border-box', borderColor: ukmError ? '#ef4444' : undefined, outlineColor: ukmError ? '#ef4444' : undefined, backgroundColor: ukmError ? '#fef2f2' : undefined }}
             />
-            {/* Pesan Error Muncul di sini secara langsung */}
             {ukmError && (
-              <div style={{ 
-                color: '#b91c1c', 
-                backgroundColor: '#fef2f2', 
-                border: '1px solid #fecaca', 
-                padding: '10px 12px', 
-                borderRadius: '8px', 
-                fontSize: '13px', 
-                marginTop: '4px', 
-                fontWeight: '600', 
-                display: 'flex', 
-                alignItems: 'flex-start', 
-                gap: '8px', 
-                lineHeight: '1.4',
-                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)'
-              }}>
-                <span style={{ fontSize: '16px' }}>⚠️</span>
-                <span>{ukmError}</span>
+              <div style={{ color: '#b91c1c', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', marginTop: '4px', fontWeight: '600', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)' }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span><span>{ukmError}</span>
               </div>
             )}
           </div>
           
           <div className="input-group">
-            <label className="form-label">Hasil Dokumentasi (Maks 3):</label>
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Hasil Dokumentasi (Maks 3):</label>
             {currentFotos.length < 3 && (
               <label className="file-dropzone" style={{opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto'}}>
                 <input type="file" accept="image/jpeg, image/png, image/jpg, image/webp" multiple onChange={handleFileChange} className="hidden-input" disabled={isLoading} />
