@@ -3,7 +3,6 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import './App.css';
 
-// KUNCI RAHASIA FIREBASE MEDFO (100% AMAN, HANYA BACA DARI .ENV)
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "medfo-auth-85df1.firebaseapp.com",
@@ -14,7 +13,6 @@ const firebaseConfig = {
   measurementId: "G-2PB43Y8XXG"
 };
 
-// Inisialisasi Firebase
 let app, auth, provider;
 try {
   app = initializeApp(firebaseConfig);
@@ -29,20 +27,25 @@ function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // --- STATE UNTUK KALENDER & BULAN ---
+  // --- STATE PROFIL & LOCAL STORAGE ---
+  const [penanggungJawab, setPenanggungJawab] = useState(localStorage.getItem('medfo_staff_name') || '');
+  const [isNameSet, setIsNameSet] = useState(!!localStorage.getItem('medfo_staff_name'));
+  const [tempName, setTempName] = useState('');
+
+  // --- STATE KALENDER & BULAN ---
   const [openDropdown, setOpenDropdown] = useState(null); 
   const [bulanOptions, setBulanOptions] = useState([]);
   const [selectedBulan, setSelectedBulan] = useState('');
   const [availableDates, setAvailableDates] = useState([]);
   const [tanggal, setTanggal] = useState('');
 
-  // Generate daftar 2 Bulan terakhir (Bulan ini & Bulan lalu)
+  // Generate 2 Bulan terakhir
   useEffect(() => {
     const options = [];
     const namaBulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const d = new Date();
     
-    for(let i = 0; i < 2; i++) { // <--- UBAH JADI 2 DI SINI
+    for(let i = 0; i < 2; i++) { 
       const m = d.getMonth();
       const y = d.getFullYear();
       const val = `${y}-${String(m + 1).padStart(2, '0')}`;
@@ -50,15 +53,13 @@ function App() {
       options.push({ value: val, label: label });
       d.setMonth(m - 1); 
     }
-    
     setBulanOptions(options);
     setSelectedBulan(options[0].value); 
   }, []);
 
-  // Generate Hari Senin berdasarkan Bulan yang dipilih
+  // Generate Hari Senin
   useEffect(() => {
     if (!selectedBulan) return;
-    
     const mondays = [];
     const [year, month] = selectedBulan.split('-').map(Number);
     const date = new Date(year, month - 1, 1);
@@ -71,7 +72,6 @@ function App() {
       }
       date.setDate(date.getDate() + 1);
     }
-    
     setAvailableDates(mondays);
     setTanggal(''); 
   }, [selectedBulan]);
@@ -99,11 +99,24 @@ function App() {
   const handleLogout = async () => {
     if (auth) await signOut(auth);
     setUser(null);
+    localStorage.removeItem('medfo_staff_name');
+    setIsNameSet(false);
+    setPenanggungJawab('');
+  };
+
+  const handleSaveName = () => {
+    const finalName = tempName.trim();
+    if (!finalName) return showAlert("AKSES DITOLAK", "Parameter Nama tidak boleh kosong!", "error");
+    
+    // Auto Kapital di awal kata
+    const capitalized = finalName.replace(/\b\w/g, l => l.toUpperCase());
+    
+    localStorage.setItem('medfo_staff_name', capitalized);
+    setPenanggungJawab(capitalized);
+    setIsNameSet(true);
   };
 
   // State Form Utama
-  const [penanggungJawab, setPenanggungJawab] = useState('');
-  const [nameError, setNameError] = useState(''); 
   const [currentUkm, setCurrentUkm] = useState('');
   const [ukmError, setUkmError] = useState(''); 
   const [laporans, setLaporans] = useState([]);
@@ -124,7 +137,6 @@ function App() {
   const showConfirm = (title, message, onConfirmCallback) => setModal({ isOpen: true, title, message, type: 'confirm', onConfirm: () => { onConfirmCallback(); closeModal(); }, onCancel: closeModal });
   const closeModal = () => setModal({ ...modal, isOpen: false });
 
-  // Sinkronisasi data riwayat awal
   useEffect(() => {
     const fetchHistory = async () => {
       setIsLoadingHistory(true);
@@ -133,15 +145,14 @@ function App() {
         const result = await response.json();
         if (result.status === "success") setHistoryData(result.data);
       } catch (error) {
-        console.error("Gagal menarik data riwayat:", error);
+        console.error("Gagal menarik data:", error);
       } finally {
         setIsLoadingHistory(false);
       }
     };
-    if (user) fetchHistory();
-  }, [user]);
+    if (user && isNameSet) fetchHistory();
+  }, [user, isNameSet]);
 
-  // Update riwayat ketika Tanggal berubah
   useEffect(() => {
     if (tanggal && historyData.length > 0) {
       const ukmsForDate = historyData.filter(item => item.tanggal === tanggal).map(item => item.ukm);
@@ -151,30 +162,16 @@ function App() {
     }
   }, [tanggal, historyData]);
 
-  // Otomatis mengisi nama dari akun Google
-  useEffect(() => {
-    if (user && !penanggungJawab) {
-      setPenanggungJawab(user.displayName || user.email.split('@')[0]);
-    }
-  }, [user]);
-
-  const handleNameChange = (e) => {
-    const value = e.target.value.replace(/[0-9]/g, '');
-    setPenanggungJawab(value);
-    if (value.trim() !== '' && /(?:^|\s)[a-z]/.test(value)) setNameError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: Budi Santoso)');
-    else setNameError('');
-  };
-
   const handleUkmChange = (e) => {
     let value = e.target.value;
     if (value.includes(',')) {
-      showAlert("Peringatan Validasi", "Mohon masukkan 1 nama UKM saja.\nTidak boleh menggunakan tanda koma (,).");
+      showAlert("INPUT TIDAK VALID", "Sistem mendeteksi tanda koma (,). Masukkan 1 nama UKM per entri.");
       value = value.replace(/,/g, '');
     }
     setCurrentUkm(value);
     if (value.trim() !== '') {
-      if (!/^UKM(\s|$)/.test(value.trim())) setUkmError('Wajib diawali dengan kata "UKM" (Contoh: UKM Tari)');
-      else if (/(?:^|\s)[a-z]/.test(value)) setUkmError('Setiap awal kata wajib menggunakan huruf kapital (Contoh: UKM Tari)');
+      if (!/^UKM(\s|$)/.test(value.trim())) setUkmError('Format salah: Wajib diawali kata "UKM" (Cth: UKM Tari)');
+      else if (/(?:^|\s)[a-z]/.test(value)) setUkmError('Format salah: Gunakan Huruf Kapital di setiap awal kata');
       else setUkmError('');
     } else setUkmError('');
   };
@@ -183,7 +180,7 @@ function App() {
     if (!event.target.files || event.target.files.length === 0) return;
     const newFiles = Array.from(event.target.files);
     if (currentFotos.length + newFiles.length > 3) {
-      showAlert("Batas Kuota", "Maksimal hanya 3 foto dokumentasi per entri UKM!");
+      showAlert("KUOTA TERLAMPAUI", "Maksimal melampirkan 3 file dokumentasi per entri!");
       event.target.value = ''; return;
     }
     setCurrentFotos([...currentFotos, ...newFiles]);
@@ -193,12 +190,12 @@ function App() {
   const removeCurrentFoto = (fotoIndex) => setCurrentFotos(currentFotos.filter((_, i) => i !== fotoIndex));
 
   const addToDraft = () => {
-    if (ukmError) return showAlert("Format Penulisan Salah", "Mohon perbaiki penulisan Nama UKM terlebih dahulu.\n" + ukmError, "error");
-    if (!currentUkm.trim()) return showAlert("Data Belum Lengkap", "Kolom 'Nama UKM' wajib diisi!");
-    if (currentFotos.length === 0) return showAlert("Data Belum Lengkap", "Pilih minimal 1 foto hasil dokumentasi!");
+    if (ukmError) return showAlert("KESALAHAN FORMAT", "Selesaikan peringatan format Nama UKM sebelum melanjutkan.\n" + ukmError, "error");
+    if (!currentUkm.trim()) return showAlert("DATA TIDAK LENGKAP", "Parameter [Nama UKM] berstatus kosong!");
+    if (currentFotos.length === 0) return showAlert("DATA TIDAK LENGKAP", "Sistem membutuhkan minimal 1 file gambar bukti dokumentasi!");
     
     const isDuplicate = laporans.some(laporan => laporan.namaUkm.toLowerCase() === currentUkm.trim().toLowerCase());
-    if (isDuplicate) return showAlert("Duplikat Terdeteksi", `UKM "${currentUkm.trim()}" sudah ada di dalam antrean.`, "error");
+    if (isDuplicate) return showAlert("DUPLIKAT TERDETEKSI", `Entri "${currentUkm.trim()}" telah ada dalam memori antrean lokal.`, "error");
 
     setLaporans([...laporans, { id: Date.now(), namaUkm: currentUkm, fotos: currentFotos }]);
     setCurrentUkm(''); setCurrentFotos([]); setUkmError('');
@@ -229,7 +226,7 @@ function App() {
 
   const executeSubmission = async (finalLaporanList) => {
     setIsLoading(true);
-    setStatus(`Memulai pengiriman ${finalLaporanList.length} antrean...`);
+    setStatus(`MENGUNGGAH PAKET DATA...`);
     let hasError = false;
     const successfulIds = []; 
 
@@ -237,178 +234,204 @@ function App() {
       for (let i = 0; i < finalLaporanList.length; i++) {
         const item = finalLaporanList[i];
         setProcessingId(item.id);
-        setStatus(`Mengirim data ${i + 1} dari ${finalLaporanList.length}...`);
         setUploadProgress(prev => ({ ...prev, [item.id]: 10 }));
 
         const amanUkmName = item.namaUkm.replace(/[^a-zA-Z0-9 ]/g, "").trim();
         const processedFotos = [];
         for (let f = 0; f < item.fotos.length; f++) {
            const compressedBase64 = await compressImage(item.fotos[f]);
-           processedFotos.push({ 
-              fileName: item.fotos.length > 1 ? `${amanUkmName} (${f + 1}).jpg` : `${amanUkmName}.jpg`, 
-              mimeType: 'image/jpeg', 
-              fileBase64: compressedBase64 
-           });
+           processedFotos.push({ fileName: item.fotos.length > 1 ? `${amanUkmName} (${f + 1}).jpg` : `${amanUkmName}.jpg`, mimeType: 'image/jpeg', fileBase64: compressedBase64 });
            setUploadProgress(prev => ({ ...prev, [item.id]: 10 + Math.floor(((f + 1) / item.fotos.length) * 40) }));
         }
-
         setUploadProgress(prev => ({ ...prev, [item.id]: 60 }));
 
-        const payload = { 
-          penanggungJawab, 
-          tanggal, 
-          laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }],
-          userEmail: user?.email || "Unknown" 
-        };
-
+        const payload = { penanggungJawab, tanggal, laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }], userEmail: user?.email || "Unknown" };
         const response = await fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) });
         const result = await response.json();
 
         if (result.status === "success") {
           setUploadProgress(prev => ({ ...prev, [item.id]: 100 }));
           successfulIds.push(item.id);
-          
-          // Refresh background data secara diam-diam agar tanda centang update
           try {
             const historyResp = await fetch(scriptURL);
             const historyResult = await historyResp.json();
             if (historyResult.status === "success") setHistoryData(historyResult.data);
           } catch(e) {}
-
           await new Promise(res => setTimeout(res, 500)); 
         } else {
-          showAlert("Pengiriman Gagal", `Gagal mengirim data UKM: ${item.namaUkm}.\nAlasan: ${result.message}`, "error");
+          showAlert("PENGIRIMAN GAGAL", `Gagal mengirim paket: ${item.namaUkm}.\nLog: ${result.message}`, "error");
           setUploadProgress(prev => ({ ...prev, [item.id]: 0 }));
-          hasError = true;
-          break; 
+          hasError = true; break; 
         }
       }
 
       if (!hasError) {
-        showAlert("🎉 BERHASIL!", `Semua ${finalLaporanList.length} data laporan UKM telah sukses dikirim ke Server.`, "success");
-        setLaporans([]); 
-        setCurrentUkm(''); setCurrentFotos([]); setUkmError('');
+        showAlert("PENGIRIMAN BERHASIL", `${finalLaporanList.length} File dokumentasi telah terkirim ke Server Utama.`, "success");
+        setLaporans([]); setCurrentUkm(''); setCurrentFotos([]); setUkmError('');
       } else {
         setLaporans(prev => prev.filter(draft => !successfulIds.includes(draft.id)));
       }
 
     } catch (error) {
-      showAlert("Terjadi Kesalahan Koneksi", "Koneksi internet terputus atau server sibuk saat memproses data.\nAntrean yang belum terkirim masih aman di keranjang, silakan coba kirim ulang.", "error");
+      showAlert("KONEKSI TERPUTUS", "Koneksi ke Server Utama terputus. Data di memori lokal masih aman.", "error");
       setLaporans(prev => prev.filter(draft => !successfulIds.includes(draft.id)));
     } finally {
-      setIsLoading(false);
-      setProcessingId(null);
-      setTimeout(() => setStatus(''), 5000);
+      setIsLoading(false); setProcessingId(null); setTimeout(() => setStatus(''), 5000);
     }
-  };
-
-  const checkKeterlambatan = (tanggalLaporan) => {
-    if (!tanggalLaporan) return false;
-    const waktuSubmit = new Date();
-    const deadline = new Date(tanggalLaporan);
-    deadline.setDate(deadline.getDate() + 2); // Batas hari Selasa 23:59
-    deadline.setHours(0, 0, 0, 0);
-    return waktuSubmit.getTime() > deadline.getTime();
   };
 
   const processSubmission = (finalLaporans) => {
     const isLate = checkKeterlambatan(tanggal);
     if (isLate) {
       showConfirm(
-        "Peringatan Keterlambatan 🔴",
-        "Laporan ini telah melewati batas waktu yang ditentukan (Selasa jam 23:59).\n\nData akan tetap terkirim, namun akan dicatat dengan status 'Terlambat' di dalam sistem Google Sheets.\n\nApakah Anda yakin ingin melanjutkan?",
+        "KETERLAMBATAN TERDETEKSI 🔴",
+        "Laporan ini telah melewati Batas Waktu (Selasa 23:59).\nData akan ditandai 'Terlambat' di Server Utama.\n\nTetap lanjutkan pengiriman?",
         () => executeSubmission(finalLaporans)
       );
-    } else {
-      executeSubmission(finalLaporans);
-    }
+    } else executeSubmission(finalLaporans);
+  };
+
+  const checkKeterlambatan = (tanggalLaporan) => {
+    if (!tanggalLaporan) return false;
+    const deadline = new Date(tanggalLaporan);
+    deadline.setDate(deadline.getDate() + 2); 
+    deadline.setHours(0, 0, 0, 0);
+    return new Date().getTime() > deadline.getTime();
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (nameError) return showAlert("Format Penulisan Salah", "Mohon perbaiki penulisan Nama Penanggung Jawab.\nPastikan setiap awal kata menggunakan huruf kapital.", "error");
-    if (!penanggungJawab.trim() || !tanggal) return showAlert("Informasi Belum Lengkap", "Kolom Penanggung Jawab dan Tanggal wajib diisi!");
+    if (!tanggal) return showAlert("DATA TIDAK LENGKAP", "Parameter [Tanggal Laporan] wajib didefinisikan!");
 
     if (currentUkm || currentFotos.length > 0) {
-      if (ukmError) return showAlert("Format Penulisan Salah", "Mohon perbaiki penulisan Nama UKM sebelum melanjutkan.", "error");
-      showConfirm("Data Belum Disimpan", "Ada data UKM yang sedang diketik tapi belum disimpan ke antrean.\n\nKlik 'Simpan & Kirim' untuk otomatis menyimpannya lalu mengirim semuanya.", () => {
-           const newDraft = { id: Date.now(), namaUkm: currentUkm || "Data Tanpa Nama", fotos: currentFotos };
-           const finalLaporans = [...laporans, newDraft];
+      if (ukmError) return showAlert("KESALAHAN FORMAT", "Mohon perbaiki format Nama UKM.", "error");
+      showConfirm("PAKET BELUM DISIMPAN", "Ada data di memori sementara yang belum masuk antrean.\nLakukan Simpan & Kirim Semua?", () => {
+           const finalLaporans = [...laporans, { id: Date.now(), namaUkm: currentUkm || "Data Tanpa Nama", fotos: currentFotos }];
            setCurrentUkm(''); setCurrentFotos([]); setLaporans(finalLaporans);
            setTimeout(() => { processSubmission(finalLaporans); }, 400);
       }); return; 
     }
-    
-    if (laporans.length === 0) return showAlert("Antrean Kosong", "Belum ada data di Daftar Antrean.");
+    if (laporans.length === 0) return showAlert("ANTREAN KOSONG", "Tidak ada data di dalam antrean pengiriman.");
     processSubmission(laporans);
   };
 
-  if (isAuthLoading) return <div className="app-wrapper"><div className="form-title">Memuat Keamanan...</div></div>;
+  // Tampilan Loading
+  if (isAuthLoading) {
+    return (
+      <div className="tech-auth-container tech-bg" style={{color:'#00f0ff', fontSize:'14px', fontFamily:'monospace', letterSpacing:'1px'}}>
+        MEMUAT KONEKSI AMAN...
+      </div>
+    );
+  }
 
+  // LAYAR 1: LOGIN PORTAL (TECH-NOIR)
   if (!user && auth) {
     return (
-      <div className="app-wrapper login-wrapper">
-        <div className="form-card login-card">
-          <div className="login-logo">🛡️</div>
-          <h2 className="form-title">Portal Laporan MEDFO</h2>
-          <p className="login-subtitle">
-            Akses ke sistem pengiriman arsip ini dibatasi.<br/>
-            Silakan verifikasi identitas Anda menggunakan akun Google.
-          </p>
-          <button onClick={handleLogin} className="btn-google-login">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" />
-            Login dengan Google
-          </button>
+      <div className="tech-auth-container tech-bg">
+        <div className="tech-auth-wrapper">
+          <div className="tech-header">
+            <img src="src\assets\Logo LMB.jpg" alt="LMB PENS Logo" className="tech-logo-img" />
+            <h1 className="tech-title">UKM REPORT</h1>
+            <p className="tech-subtitle">[ AKSES KHUSUS STAFF MEDFO ]</p>
+          </div>
+         <div className="tech-panel">
+            <h2 className="tech-panel-title">SISTEM PELAPORAN</h2>
+            
+            {/* --- KOTAK TERMINAL BARU --- */}
+            <div className="tech-panel-desc" style={{ textAlign: 'left', backgroundColor: 'rgba(0,0,0,0.3)', padding: '12px 15px', borderLeft: '3px solid var(--neon-cyan)', borderRadius: '6px', marginBottom: '24px', fontSize: '11px', fontFamily: 'var(--font-tech)' }}>
+              <div style={{ color: 'var(--neon-green)', marginBottom: '6px', fontWeight: 'bold', letterSpacing: '1px' }}>[ STATUS: TERENKRIPSI & AMAN ]</div>
+              <div style={{ color: 'var(--text-dim)', marginBottom: '4px' }}>&gt; Modul sinkronisasi arsip aktif.</div>
+              <div style={{ color: 'var(--neon-red)' }}>&gt; Akses ketat: Hanya staf terotorisasi.</div>
+            </div>
+            {/* --------------------------- */}
+
+            <button onClick={handleLogin} className="tech-btn-google">
+              <div className="tech-google-icon-wrapper">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="tech-google-icon" />
+              </div>
+              <div className="tech-btn-text-wrapper">
+                <span className="tech-btn-main-text">OTENTIKASI DENGAN GOOGLE</span>
+                <span className="tech-btn-sub-text">[ INISIASI KONEKSI ]</span>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // LAYAR 2: LENGKAPI PROFIL STAF (TECH-NOIR)
+  if (user && !isNameSet) {
+    return (
+      <div className="tech-auth-container tech-bg">
+        <div className="tech-auth-wrapper">
+          <div className="tech-header">
+            <img src="src\assets\Logo LMB.jpg" alt="LMB PENS Logo" className="tech-logo-img" />
+            <h1 className="tech-title">PROFIL STAF</h1>
+            <p className="tech-subtitle">[ STAF TERVERIFIKASI ]</p>
+          </div>
+          <div className="tech-panel">
+            <h2 className="tech-panel-title">HALO, {user.displayName?.split(' ')[0] || 'STAF'}!</h2>
+            
+            {/* --- KOTAK TERMINAL BARU --- */}
+            <div className="tech-panel-desc" style={{ textAlign: 'left', backgroundColor: 'rgba(0,0,0,0.3)', padding: '12px 15px', borderLeft: '3px solid var(--neon-cyan)', borderRadius: '6px', marginBottom: '24px', fontSize: '11px', fontFamily: 'var(--font-tech)' }}>
+              <div style={{ color: 'var(--neon-cyan)', marginBottom: '6px', fontWeight: 'bold', letterSpacing: '1px' }}>[ OTENTIKASI TAHAP 1: OK ]</div>
+              <div style={{ color: 'var(--text-dim)' }}>&gt; Tetapkan identitas operasional untuk label penanggung jawab data.</div>
+            </div>
+            {/* --------------------------- */}
+
+            <div className="tech-input-container">
+              <span className="tech-input-icon">👤</span>
+              <input 
+                type="text" 
+                placeholder="PANGGILAN / RESMI (Wajib)" 
+                className="tech-input"
+                value={tempName} 
+                onChange={(e) => setTempName(e.target.value)}
+              />
+            </div>
+            <button onClick={handleSaveName} className="tech-btn-action">
+              SIMPAN & OTORISASI PELAPORAN 🚀
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // LAYAR 3: FORM UTAMA (FULL TECH-NOIR)
   return (
-    <div className="app-wrapper">
+    <div className="app-wrapper tech-bg">
       <div className="form-card">
         {user && (
           <div className="user-header">
             <div className="user-info">
               <img src={user.photoURL || 'https://via.placeholder.com/36'} alt="Profile" className="user-avatar" />
               <div className="user-text">
-                <span className="user-name">{user.displayName || "Pengguna MEDFO"}</span>
-                <span className="user-email">Staf Terverifikasi ({user.email})</span>
+                <span className="user-name">{penanggungJawab}</span>
+                <span className="user-email">SESI AKTIF: {user.email}</span>
               </div>
             </div>
-            <button onClick={handleLogout} className="btn-logout">Keluar</button>
+            <button onClick={handleLogout} className="btn-logout">[ KELUAR ]</button>
           </div>
         )}
 
-        <h2 className="form-title">Form UKM Report</h2>
+        <h2 className="form-title">FORMULIR PELAPORAN</h2>
         {openDropdown && <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>}
 
-        <div className="section-heading"><span>1</span> Informasi Umum</div>
+        <div className="section-heading"><span>1</span> PARAMETER UTAMA</div>
         <div className="global-section">
           
           <div className="input-group">
-            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Nama Penanggung Jawab (Staff Medfo):</label>
-            <input 
-              type="text" value={penanggungJawab} onChange={handleNameChange} className="form-input" placeholder="Cth: Mila" disabled={isLoading} 
-              style={{ height: '52px', boxSizing: 'border-box', borderColor: nameError ? '#ef4444' : undefined, outlineColor: nameError ? '#ef4444' : undefined, backgroundColor: nameError ? '#fef2f2' : undefined }}
-            />
-            {nameError && (
-              <div style={{ color: '#b91c1c', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', marginTop: '4px', fontWeight: '600', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)' }}>
-                <span style={{ fontSize: '16px' }}>⚠️</span><span>{nameError}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="input-group">
-            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Bulan Laporan:</label>
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Pilih Bulan Laporan:</label>
             <div className="custom-select-wrapper">
               <div 
                 className={`custom-select-trigger ${openDropdown === 'month' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
                 onClick={() => !isLoading && setOpenDropdown(openDropdown === 'month' ? null : 'month')}
-                style={{ height: '52px', boxSizing: 'border-box', backgroundColor: '#f8fafc' }}
+                style={{ height: '52px', boxSizing: 'border-box' }}
               >
                 <div className="custom-select-value">
-                  <span>🗓️</span> <span>{bulanOptions.find(b => b.value === selectedBulan)?.label || '-- Pilih Bulan --'}</span>
+                  <span>[M]</span> <span>{bulanOptions.find(b => b.value === selectedBulan)?.label || '-- Pilih Bulan --'}</span>
                 </div>
                 <span className="chevron-icon">▼</span>
               </div>
@@ -416,7 +439,7 @@ function App() {
                 <div className="custom-select-dropdown">
                   {bulanOptions.map((b, idx) => (
                     <div key={idx} className={`custom-select-item ${selectedBulan === b.value ? 'selected' : ''}`} onClick={() => { setSelectedBulan(b.value); setOpenDropdown(null); }}>
-                      <span style={{ fontSize: '18px', opacity: selectedBulan === b.value ? 1 : 0.7 }}>🗓️</span><span>{b.label}</span>
+                      <span style={{ fontSize: '14px', opacity: selectedBulan === b.value ? 1 : 0.5 }}>{'>'}</span><span>{b.label}</span>
                     </div>
                   ))}
                 </div>
@@ -425,7 +448,7 @@ function App() {
           </div>
 
           <div className="input-group">
-            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Tanggal Laporan (Hari Senin):</label>
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Pilih Tanggal (Senin):</label>
             <div className="custom-select-wrapper">
               <div 
                 className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
@@ -437,82 +460,78 @@ function App() {
                     const hasReport = historyData.some(h => h.tanggal === tanggal);
                     return (
                       <>
-                        <span>📅</span> 
+                        <span>[D]</span> 
                         <span>
                           {availableDates.find(d => d.value === tanggal)?.label || tanggal} 
-                          {hasReport && <span style={{ marginLeft: '6px' }}>✅</span>}
+                          {hasReport && <span style={{ marginLeft: '8px', color: '#39ff14' }}>[Terisi]</span>}
                         </span>
                       </>
                     );
                   })() : (
-                    <span className="custom-select-placeholder">-- Pilih Hari Senin --</span>
+                    <span className="custom-select-placeholder">-- Menunggu Input --</span>
                   )}
                 </div>
                 <span className="chevron-icon">▼</span>
               </div>
               
-              {/* DROPDOWN TANGGAL DENGAN TANDA CENTANG ✅ */}
               {openDropdown === 'date' && (
                 <div className="custom-select-dropdown">
                   {availableDates.length > 0 ? availableDates.map((dateObj, idx) => {
-                    // Cek apakah di database sudah ada data untuk tanggal ini
                     const hasReport = historyData.some(h => h.tanggal === dateObj.value);
                     return (
                     <div key={idx} className={`custom-select-item ${tanggal === dateObj.value ? 'selected' : ''}`} onClick={() => { setTanggal(dateObj.value); setOpenDropdown(null); }}>
-                      <span style={{ fontSize: '18px', opacity: tanggal === dateObj.value ? 1 : 0.7 }}>📅</span>
+                      <span style={{ fontSize: '14px', opacity: tanggal === dateObj.value ? 1 : 0.5 }}>{'>'}</span>
                       <span>
                         {dateObj.label} 
-                        {hasReport && <span style={{ marginLeft: '6px' }}>✅</span>}
+                        {hasReport && <span style={{ marginLeft: '8px', color: '#39ff14' }}>[Terisi]</span>}
                       </span>
                     </div>
                   )}) : (
-                    <div className="custom-select-item" style={{justifyContent: 'center', color: '#94a3b8', cursor: 'default'}}>Tidak ada hari Senin di bulan ini</div>
+                    <div className="custom-select-item" style={{justifyContent: 'center', color: '#4b5563', cursor: 'default'}}>TIDAK ADA DATA</div>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Versi Super Bersih untuk Informasi Bawah (Hanya Teks Singkat) */}
-          <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+          <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: 'rgba(0,240,255,0.05)', borderRadius: '8px', border: '1px solid rgba(0,240,255,0.2)', textAlign: 'center', fontFamily: 'var(--font-tech)' }}>
             {!tanggal ? (
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Pilih tanggal untuk melihat status laporan.</span>
+              <span style={{ fontSize: '12px', color: '#9ca3af' }}>PILIH TANGGAL</span>
             ) : isLoadingHistory ? (
-              <span style={{ fontSize: '13px', color: '#64748b' }}>⏳ Memuat...</span>
+              <span style={{ fontSize: '12px', color: '#00f0ff' }}>MEMINDAI DATABASE...</span>
             ) : submittedUkms.length > 0 ? (
-              <span style={{ fontSize: '13px', color: '#166534', fontWeight: '600' }}>
-                ✅ Sudah ada {submittedUkms.length} laporan UKM yang masuk di tanggal ini.
+              <span style={{ fontSize: '12px', color: '#39ff14', fontWeight: 'bold' }}>
+                [ OK ] DITEMUKAN {submittedUkms.length} DATA PADA TANGGAL INI.
               </span>
             ) : (
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Belum ada laporan di tanggal ini. Kamu yang pertama! 🚀</span>
+              <span style={{ fontSize: '12px', color: '#00f0ff' }}>[ KOSONG ] BELUM ADA DATA PADA TANGGAL INI.</span>
             )}
           </div>
-
         </div>
 
-        <div className="section-heading"><span>2</span> Tambah Data Baru</div>
+        <div className="section-heading"><span>2</span> ENTRI DATA</div>
         <div className="active-form-section">
           <div className="input-group">
             <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Nama UKM:</label>
             <input 
               type="text" value={currentUkm} onChange={handleUkmChange} className="form-input" placeholder="Cth: UKM Tari" disabled={isLoading} 
-              style={{ height: '52px', boxSizing: 'border-box', borderColor: ukmError ? '#ef4444' : undefined, outlineColor: ukmError ? '#ef4444' : undefined, backgroundColor: ukmError ? '#fef2f2' : undefined }}
+              style={{ height: '52px', boxSizing: 'border-box', borderColor: ukmError ? 'var(--neon-red)' : undefined, outlineColor: ukmError ? 'var(--neon-red)' : undefined, backgroundColor: ukmError ? 'rgba(255,0,60,0.1)' : undefined }}
             />
             {ukmError && (
-              <div style={{ color: '#b91c1c', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', marginTop: '4px', fontWeight: '600', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)' }}>
-                <span style={{ fontSize: '16px' }}>⚠️</span><span>{ukmError}</span>
+              <div style={{ color: 'var(--neon-red)', backgroundColor: 'rgba(255,0,60,0.1)', border: '1px solid var(--neon-red)', padding: '10px 12px', borderRadius: '6px', fontSize: '12px', marginTop: '6px', fontWeight: '600', display: 'flex', alignItems: 'flex-start', gap: '8px', fontFamily: 'var(--font-tech)' }}>
+                <span>[ERROR]</span><span>{ukmError}</span>
               </div>
             )}
           </div>
           
           <div className="input-group">
-            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Hasil Dokumentasi (Maks 3):</label>
+            <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Lampiran File (Maks: 3):</label>
             {currentFotos.length < 3 && (
               <label className="file-dropzone" style={{opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto'}}>
                 <input type="file" accept="image/jpeg, image/png, image/jpg, image/webp" multiple onChange={handleFileChange} className="hidden-input" disabled={isLoading} />
                 <span className="dropzone-icon">📁</span>
-                <span className="dropzone-text">Tap di sini untuk pilih foto</span>
-                <span className="dropzone-subtext">Tahan/Select foto di Galeri untuk pilih banyak</span>
+                <span className="dropzone-text">[ KLIK/TAP UNTUK MENGUNGGAH ]</span>
+                <span className="dropzone-subtext">MENDUKUNG FORMAT: JPG/PNG/WEBP</span>
               </label>
             )}
 
@@ -524,22 +543,22 @@ function App() {
                     <div className="file-chip" key={index}>
                       <div className="file-chip-info">
                         <img src={previewUrl} alt="preview" className="file-chip-thumbnail" />
-                        <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="file-chip-name">{foto.name}</a>
+                        <span className="file-chip-name">{foto.name}</span>
                       </div>
-                      <button type="button" onClick={() => removeCurrentFoto(index)} className="file-chip-remove" disabled={isLoading}>✕</button>
+                      <button type="button" onClick={() => removeCurrentFoto(index)} className="file-chip-remove" disabled={isLoading}>X</button>
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
-          <button type="button" onClick={addToDraft} className="btn-add-draft" disabled={isLoading}>+ Simpan ke Daftar Laporan</button>
+          <button type="button" onClick={addToDraft} className="btn-add-draft" disabled={isLoading}>+ MASUKKAN KE ANTREAN</button>
         </div>
 
-        <div className="section-heading"><span>3</span> Daftar Antrean ({laporans.length})</div>
+        <div className="section-heading"><span>3</span> ANTREAN PENGIRIMAN ({laporans.length})</div>
         <div className="draft-list-section">
           {laporans.length === 0 ? (
-            <div className="empty-draft">Belum ada data UKM yang ditambahkan ke antrean.</div>
+            <div className="empty-draft">[ ANTREAN KOSONG ]</div>
           ) : (
              laporans.map((laporan, index) => {
               const currentProgress = uploadProgress[laporan.id] || 0;
@@ -548,12 +567,12 @@ function App() {
               return (
                 <div className={`draft-item ${isProcessing ? 'processing' : ''}`} key={laporan.id}>
                   <div className="draft-info">
-                    <span className="draft-title">{index + 1}. {laporan.namaUkm}</span>
-                    <span className="draft-subtitle">Terlampir {laporan.fotos.length} file dokumentasi</span>
+                    <span className="draft-title">[{index + 1}] {laporan.namaUkm}</span>
+                    <span className="draft-subtitle">Lampiran: {laporan.fotos.length} file foto</span>
                     {isProcessing && (
                       <div className="progress-container">
                         <span className={`draft-status-text ${isSuccess ? 'success' : ''}`}>
-                          {isSuccess ? '✓ Berhasil terkirim' : currentProgress > 50 ? `⏳ Mengunggah ke server... (${currentProgress}%)` : `⏳ Mengemas file... (${currentProgress}%)`}
+                          {isSuccess ? '[ SELESAI ] Data Terkirim' : currentProgress > 50 ? `> MENGUNGGAH DATA (${currentProgress}%)` : `> MEMADATKAN FILE (${currentProgress}%)`}
                         </span>
                         <div className="progress-bar-bg"><div className={`progress-bar-fill ${isSuccess ? 'success' : ''}`} style={{ width: `${currentProgress}%` }}></div></div>
                       </div>
@@ -567,7 +586,7 @@ function App() {
         </div>
 
         <button type="button" onClick={handleSubmit} disabled={isLoading || laporans.length === 0} className="submit-button">
-          {isLoading ? 'Sedang Memproses...' : `Kirim ${laporans.length} Data Sekaligus 🚀`}
+          {isLoading ? 'MENGIRIMKAN...' : `JALANKAN PENGUNGGAHAN (${laporans.length})`}
         </button>
       </div>
 
@@ -575,13 +594,13 @@ function App() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className={`modal-icon ${modal.type}`}>
-              {modal.type === 'warning' && '⚠️'} {modal.type === 'success' && '✅'} {modal.type === 'error' && '❌'} {modal.type === 'confirm' && '❓'}
+              {modal.type === 'warning' && '⚠️'} {modal.type === 'success' && '✓'} {modal.type === 'error' && '!'} {modal.type === 'confirm' && '?'}
             </div>
             <h3 className="modal-title">{modal.title}</h3>
             <p className="modal-message">{modal.message}</p>
             <div className="modal-actions">
-              {modal.type === 'confirm' && <button onClick={modal.onCancel} className="modal-btn secondary">Batal</button>}
-              <button onClick={modal.onConfirm} className="modal-btn primary">{modal.type === 'confirm' ? 'Simpan & Kirim' : 'Mengerti'}</button>
+              {modal.type === 'confirm' && <button onClick={modal.onCancel} className="modal-btn secondary">BATAL</button>}
+              <button onClick={modal.onConfirm} className="modal-btn primary">{modal.type === 'confirm' ? 'KONFIRMASI' : 'MENGERTI'}</button>
             </div>
           </div>
         </div>
