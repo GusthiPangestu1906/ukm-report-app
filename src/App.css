@@ -362,11 +362,73 @@ html, body, #root {
 @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
+/* =========================================
+   RESPONSIVE MOBILE OPTIMIZATION (HP)
+   ========================================= */
 @media (max-width: 600px) {
-  .app-wrapper { padding: 20px 10px; }
+  /* 1. Pembungkus Utama */
+  .app-wrapper { padding: 15px 10px; }
   .form-card { padding: 24px 16px; border-radius: 16px; }
-  .form-title { font-size: 20px; }
-  .global-section, .active-form-section { padding: 16px; }
+  
+  /* Pastikan garis neon ikut mengecil radiusnya mengikuti form-card */
+  .form-card::before { border-radius: 16px 16px 0 0; } 
+  .form-title { font-size: 20px; margin-bottom: 25px; }
+
+  /* 2. Layar Login & Profil (Tech-Noir Auth) */
+  .tech-auth-wrapper { padding: 30px 16px; margin: 0 15px; width: calc(100% - 30px); }
+  .tech-title { font-size: 22px; }
+  .tech-panel-title { font-size: 14px; }
+  .tech-btn-main-text { font-size: 10px; } /* Kecilkan teks agar tidak nabrak */
+  .tech-btn-sub-text { font-size: 9px; }
+  .tech-google-icon-wrapper { padding: 12px 14px; }
+  .tech-panel-desc { padding: 10px; font-size: 10px; }
+
+  /* 3. Header Profil User (Bikin numpuk atas-bawah agar tidak sesak) */
+  .user-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .user-info { width: 100%; }
+  .btn-logout { width: 100%; text-align: center; padding: 12px; } /* Tombol logout jadi full-width */
+
+  /* 4. Bagian Dalam Form */
+  .global-section, .active-form-section { padding: 16px; gap: 14px; }
+  .section-heading { font-size: 13px; }
+  
+  /* Input & Dropdown */
+  .custom-select-trigger, .form-input { 
+    padding: 12px 14px; 
+    font-size: 13px; 
+    height: 48px !important; 
+  }
+  .form-label { font-size: 11px; }
+
+  /* 5. Lampiran Foto (File Chips) */
+  .file-chip { 
+    flex-direction: column; /* Gambar & Tombol hapus jadi atas-bawah */
+    align-items: flex-start; 
+    gap: 12px; 
+  }
+  .file-chip-info { width: 100%; }
+  .file-chip-remove { 
+    width: 100%; /* Tombol X jadi tombol panjang agar mudah diklik di HP */
+    padding: 10px 0; 
+  }
+
+  /* 6. Daftar Antrean Data (Draft Items) */
+  .draft-item { 
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: 16px;
+  }
+  .draft-info { width: 100%; }
+  .btn-delete-draft { 
+    width: 100%; /* Tombol hapus antrean juga jadi panjang penuh */
+    padding: 12px 0; 
+  }
+  .draft-title { white-space: normal; } /* Izinkan judul UKM panjang untuk turun baris */
+
+  /* 7. Modal / Pop-up */
+  .modal-content { padding: 24px 16px; margin: 0 15px; }
+  .modal-actions { flex-direction: column; } /* Tombol pop-up jadi atas-bawah */
+  .modal-btn { width: 100%; }
 }
 
 @keyframes hologramBoot {
