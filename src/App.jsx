@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import './App.css';
+import logoLmb from './assets/logo-lmb.jpg';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -330,7 +331,7 @@ function App() {
       <div className="tech-auth-container tech-bg">
         <div className="tech-auth-wrapper">
           <div className="tech-header">
-            <img src="src\assets\Logo LMB.jpg" alt="LMB PENS Logo" className="tech-logo-img" />
+            <img src={logoLmb} alt="LMB PENS Logo" className="tech-logo-img" />
             <h1 className="tech-title">UKM REPORT</h1>
             <p className="tech-subtitle">[ AKSES KHUSUS STAFF MEDFO ]</p>
           </div>
@@ -366,7 +367,7 @@ function App() {
       <div className="tech-auth-container tech-bg">
         <div className="tech-auth-wrapper">
           <div className="tech-header">
-            <img src="src\assets\Logo LMB.jpg" alt="LMB PENS Logo" className="tech-logo-img" />
+            <img src={logoLmb} alt="LMB PENS Logo" className="tech-logo-img" />
             <h1 className="tech-title">PROFIL STAF</h1>
             <p className="tech-subtitle">[ STAF TERVERIFIKASI ]</p>
           </div>
