@@ -2,7 +2,20 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import './App.css';
+
 import logoLmb from './assets/Logo LMB.jpg';
+import { CACHE_KEYS, cache } from './utils/cache';
+import { REGEX } from './utils/regex';
+import { HISTORY_CACHE_TTL, ADMIN_SECRET } from './utils/constants';
+import { extractFolderId, getMonthOptions } from './utils/helpers';
+
+import AuthScreen from './features/auth/AuthScreen';
+import RoleSelection from './features/role/RoleSelection';
+import ProfileSetup from './features/profile/ProfileSetup';
+import AdminDashboard from './features/admin/AdminDashboard';
+import StaffDashboard from './features/report/StaffDashboard';
+import Modal from './features/ui/Modal';
+import ImagePreviewOverlay from './features/ui/ImagePreviewOverlay';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,44 +37,30 @@ try {
   console.warn("Firebase error:", e);
 }
 
-// =========================================
-// REGEX & CONSTANTS
-// =========================================
-const REGEX = {
-  staffName: /^[a-zA-Z\s'-]+$/,
-  ukmPrefix: /^UKM(\s|$)/,
-  ukmLowerCase: /(?:^|\s)[a-z]/,
-  ukmComma: /,/,
-};
-
-const CACHE_KEYS = {
-  draftQueue: 'medfo_draft_queue',
-  staffName:  'medfo_staff_name',
-  historyData: 'medfo_history_cache',
-  historyTimestamp: 'medfo_history_ts',
-  formState: 'medfo_form_state',
-  userRole: 'medfo_user_role' 
-};
-
-const HISTORY_CACHE_TTL = 5 * 60 * 1000;
-const ADMIN_SECRET = "MDF-1906"; // Passcode Rahasia Khusus Admin
-
-const cache = {
-  get: (key) => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } },
-  set: (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; } },
-  remove: (key) => { try { localStorage.removeItem(key); } catch {} },
-};
-
 function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState(null); 
   const [isAppInitialized, setIsAppInitialized] = useState(false);
 
+  // --- STATE INFRASTRUKTUR / DATABASE ---
+  const [folderId, setFolderId] = useState(localStorage.getItem('medfo_folder_id') || '');
+  const [spreadsheetId, setSpreadsheetId] = useState(localStorage.getItem('medfo_spreadsheet_id') || '');
+
+  // Logika Riwayat Infrastruktur (Audit Log)
+  const [migrationLogs, setMigrationLogs] = useState(() => JSON.parse(localStorage.getItem('medfo_migration_logs') || '[]'));
+
+  const [driveUrlInput, setDriveUrlInput] = useState('');
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('medfo_current_position') || 'null'); } catch { return null; }
+  });
+
   // State Keamanan Admin
   const [showAdminChallenge, setShowAdminChallenge] = useState(false);
   const [adminPin, setAdminPin] = useState('');
   const [adminError, setAdminError] = useState('');
+  const [isAdminVerifying, setIsAdminVerifying] = useState(false);
 
   const [penanggungJawab, setPenanggungJawab] = useState('');
   const [isNameSet, setIsNameSet] = useState(false);
@@ -92,11 +91,114 @@ function App() {
 
   const [completedSteps, setCompletedSteps] = useState({ bulan: false, tanggal: false });
 
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
+  // URL Backend
+  const scriptURL = import.meta.env.VITE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
 
   const showAlert  = (title, message, type = 'warning') => setModal({ isOpen: true, title, message, type, onConfirm: closeModal });
   const showConfirm = (title, message, onConfirmCallback) => setModal({ isOpen: true, title, message, type: 'confirm', onConfirm: () => { onConfirmCallback(); closeModal(); }, onCancel: closeModal });
   const closeModal  = () => setModal(prev => ({ ...prev, isOpen: false }));
+
+  // =========================================
+  // FUNGSI AUTO-MIGRASI PROTOKOL & LOGGING
+  // =========================================
+  const extractFolderId = (url) => {
+    const match = url.match(/\/folders\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : null;
+  };
+
+  const addMigrationLog = (actionName) => {
+    const newLog = {
+      date: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
+      actor: user?.email || user?.displayName || 'ADMIN UTAMA',
+      action: actionName
+    };
+    const updatedLogs = [newLog, ...migrationLogs];
+    localStorage.setItem('medfo_migration_logs', JSON.stringify(updatedLogs));
+    setMigrationLogs(updatedLogs);
+  };
+
+  // Taruh setelah fungsi addMigrationLog
+  const handleDeleteMigrationLog = (index) => {
+    const isAll = index === 'all';
+    showConfirm(
+      isAll ? "HAPUS SEMUA RIWAYAT" : "HAPUS RIWAYAT",
+      isAll ? "Yakin ingin menghapus semua riwayat infrastruktur?" : "Yakin ingin menghapus riwayat infrastruktur ini?",
+      () => {
+        const updatedLogs = isAll ? [] : migrationLogs.filter((_, i) => i !== index);
+        localStorage.setItem('medfo_migration_logs', JSON.stringify(updatedLogs));
+        setMigrationLogs(updatedLogs);
+      }
+    );
+  };
+
+  const handleSystemSetup = async (e) => {
+    e.preventDefault();
+    const extractedId = extractFolderId(driveUrlInput);
+    
+    if (!extractedId) {
+      return showAlert("FORMAT URL SALAH", "Pastikan Anda memasukkan URL folder Google Drive yang valid.", "error");
+    }
+
+    const confirmMessage = "Sistem akan menautkan (dan memigrasikan) data ke Folder Drive yang baru. Lanjutkan?";
+
+    showConfirm("KONFIRMASI TAUTAN BARU", confirmMessage, async () => {
+      setSetupLoading(true);
+      try {
+        const response = await fetch(scriptURL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'initSystem',
+            folderId: extractedId,
+            oldSpreadsheetId: spreadsheetId // Jika kosong, backend akan clone dari database default
+          })
+        });
+        const result = await response.json();
+
+        if (result.status === 'success') {
+          // Simpan ID yang baru
+          localStorage.setItem('medfo_folder_id', extractedId);
+          localStorage.setItem('medfo_spreadsheet_id', result.spreadsheetId);
+          setFolderId(extractedId);
+          setSpreadsheetId(result.spreadsheetId);
+          
+          // Set current position locally (timestamped) so UI dapat menampilkan posisi aktif
+          try {
+            const pos = { folderId: extractedId, spreadsheetId: result.spreadsheetId, setAt: new Date().toISOString() };
+            localStorage.setItem('medfo_current_position', JSON.stringify(pos));
+            setCurrentPosition(pos);
+          } catch (e) { /* ignore */ }
+
+          setDriveUrlInput('');
+          showAlert("TAUTAN BERHASIL", result.message || "Database berhasil ditautkan.", "success");
+          
+          // Tambahkan ke Log
+          addMigrationLog(spreadsheetId ? 'MEMPERBARUI TAUTAN KE FOLDER BARU' : 'INISIASI TAUTAN PERTAMA KALI');
+          
+          fetchHistory(true); 
+        } else {
+          showAlert("GAGAL MEMPROSES", result.message || "Gagal menghubungi server Google Drive.", "error");
+        }
+      } catch (err) {
+        showAlert("KONEKSI TERPUTUS", "Gagal menghubungi Server Google Apps Script.", "error");
+      } finally {
+        setSetupLoading(false);
+      }
+    });
+  };
+
+  const handleResetToDefault = () => {
+    showConfirm("KEMBALI KE DATABASE UTAMA", "Sistem akan memutuskan tautan dari folder saat ini dan kembali menggunakan Spreadsheet Utama (Default) bawaan sistem. Lanjutkan?", () => {
+      // Kosongkan ID saat ini (agar fallback ke Default script)
+      localStorage.removeItem('medfo_folder_id');
+      localStorage.removeItem('medfo_spreadsheet_id');
+      setFolderId('');
+      setSpreadsheetId('');
+
+      addMigrationLog('KEMBALI MENGGUNAKAN DATABASE UTAMA (DEFAULT)');
+      showAlert("RESTORASI BERHASIL", "Sistem kini beroperasi menggunakan Database Utama bawaan.", "success");
+      fetchHistory(true);
+    });
+  };
 
   // =========================================
   // AUTH FIREBASE & RECOVERY
@@ -132,14 +234,8 @@ function App() {
 
     const savedFormState = cache.get(CACHE_KEYS.formState);
     if (savedFormState) {
-      if (savedFormState.selectedBulan) {
-        setSelectedBulan(savedFormState.selectedBulan);
-        setCompletedSteps(prev => ({ ...prev, bulan: true }));
-      }
-      if (savedFormState.tanggal) {
-        setTanggal(savedFormState.tanggal);
-        setCompletedSteps(prev => ({ ...prev, bulan: true, tanggal: true }));
-      }
+      if (savedFormState.selectedBulan) { setSelectedBulan(savedFormState.selectedBulan); setCompletedSteps(prev => ({ ...prev, bulan: true })); }
+      if (savedFormState.tanggal) { setTanggal(savedFormState.tanggal); setCompletedSteps(prev => ({ ...prev, bulan: true, tanggal: true })); }
     }
     setIsAppInitialized(true);
   }, []);
@@ -156,14 +252,7 @@ function App() {
   }, [selectedBulan, tanggal, isAppInitialized]);
 
   useEffect(() => {
-    const options = [];
-    const namaBulanIndo = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-    const d = new Date();
-    for (let i = 0; i < 6; i++) {
-      const m = d.getMonth(); const y = d.getFullYear();
-      options.push({ value: `${y}-${String(m + 1).padStart(2, '0')}`, label: `${namaBulanIndo[m]} ${y}` });
-      d.setMonth(m - 1);
-    }
+    const options = getMonthOptions();
     setBulanOptions(options);
     if (!cache.get(CACHE_KEYS.formState)?.selectedBulan) {
       setSelectedBulan(options[0].value);
@@ -218,6 +307,15 @@ function App() {
     e.preventDefault();
     if (!adminPin.trim()) return;
 
+    // MASTER KEY ADMIN 1: Selalu bisa masuk tanpa koneksi server
+    if (adminPin.trim().toUpperCase() === ADMIN_SECRET) {
+      setAdminError('');
+      handleRoleSelect('admin');
+      setPenanggungJawab('ADMIN MEDFO');
+      setIsNameSet(true);
+      return;
+    }
+
     setIsAdminVerifying(true);
     setAdminError('');
 
@@ -226,7 +324,8 @@ function App() {
         method: 'POST',
         body: JSON.stringify({ 
           action: 'verifyAdmin', 
-          passcode: adminPin.trim().toUpperCase() 
+          passcode: adminPin.trim().toUpperCase(),
+          spreadsheetId: spreadsheetId // Opsional, backend akan pakai default jika kosong
         })
       });
       const result = await response.json();
@@ -259,6 +358,7 @@ function App() {
     setIsNameSet(true);
   };
 
+  // Hanya Staf yang perlu menarik history untuk form validasi hariannya
   const fetchHistory = useCallback(async (forceRefresh = false) => {
     if (!forceRefresh) {
       const cachedHistory = cache.get(CACHE_KEYS.historyData);
@@ -270,7 +370,8 @@ function App() {
     }
     setIsLoadingHistory(true);
     try {
-      const response = await fetch(scriptURL);
+      const url = spreadsheetId ? `${scriptURL}?spreadsheetId=${spreadsheetId}` : scriptURL;
+      const response = await fetch(url);
       const result = await response.json();
       if (result.status === "success") {
         setHistoryData(result.data);
@@ -282,11 +383,17 @@ function App() {
       const cachedHistory = cache.get(CACHE_KEYS.historyData);
       if (cachedHistory) setHistoryData(cachedHistory);
     } finally { setIsLoadingHistory(false); }
-  }, []);
+  }, [scriptURL, spreadsheetId]);
 
   useEffect(() => {
-    if (user && userRole && isNameSet) fetchHistory();
+    // Admin tidak perlu menarik history UKM lagi, cukup Staf
+    if (user && userRole === 'staff' && isNameSet) fetchHistory();
   }, [user, userRole, isNameSet, fetchHistory]);
+
+  // Jika Admin, tarik seluruh history untuk kebutuhan manajemen
+  useEffect(() => {
+    if (user && userRole === 'admin') fetchHistory(true);
+  }, [user, userRole, fetchHistory]);
 
   useEffect(() => {
     if (userRole === 'staff' && tanggal && historyData.length > 0) {
@@ -393,7 +500,6 @@ function App() {
   };
 
   const removeDraft = (id) => setLaporans(laporans.filter(l => l.id !== id));
-  const [isAdminVerifying, setIsAdminVerifying] = useState(false);
 
   const executeSubmission = async (finalLaporanList) => {
     setIsLoading(true);
@@ -412,7 +518,15 @@ function App() {
           fileBase64: f.data.split(',')[1]
         }));
         setUploadProgress(prev => ({ ...prev, [item.id]: 60 }));
-        const payload = {action: 'submitReport', penanggungJawab, tanggal, laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }], userEmail: user?.email || "Unknown" };
+        const payload = { 
+          action: 'submitReport', 
+          penanggungJawab, 
+          tanggal, 
+          laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }], 
+          userEmail: user?.email || "Unknown",
+          folderId: folderId,
+          spreadsheetId: spreadsheetId
+        };
         const response = await fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) });
         const result = await response.json();
         if (result.status === "success") {
@@ -420,6 +534,10 @@ function App() {
           successfulIds.push(item.id);
           await fetchHistory(true);
           await new Promise(res => setTimeout(res, 500));
+        } else if (result.message && result.message.startsWith('MAINTENANCE:')) {
+          showAlert("⚠ SISTEM MAINTENANCE", "Admin sedang melakukan pemeliharaan database. Harap tunggu beberapa saat dan coba lagi.", "warning");
+          setUploadProgress(prev => ({ ...prev, [item.id]: 0 }));
+          hasError = true; break;
         } else {
           showAlert("PENGIRIMAN GAGAL", `Gagal mengirim paket: ${item.namaUkm}.\nLog: ${result.message}`, "error");
           setUploadProgress(prev => ({ ...prev, [item.id]: 0 }));
@@ -478,6 +596,35 @@ function App() {
     processSubmission(laporans);
   };
 
+  // =========================================
+  // ADMIN ACTION: HAPUS RIWAYAT
+  // =========================================
+  const handleDeleteHistoryRecord = async (record) => {
+    if (!record) return;
+    const buildIdentifier = () => {
+      if (record.id) return { recordId: record.id };
+      // fallback composite key
+      return { ukm: record.ukm, tanggal: record.tanggal, userEmail: record.userEmail || record.penanggungJawab || record.actor };
+    };
+
+    showConfirm("HAPUS RIWAYAT", `Anda akan menghapus entri riwayat untuk [${record.ukm || 'UNKNOWN'}] pada tanggal ${record.tanggal || 'UNKNOWN'}. Lanjutkan?`, async () => {
+      try {
+        const payload = { action: 'deleteHistory', spreadsheetId: spreadsheetId, identifier: buildIdentifier() };
+        const response = await fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) });
+        const result = await response.json();
+        if (result.status === 'success') {
+          await fetchHistory(true);
+          showAlert('BERHASIL', result.message || 'Entri riwayat berhasil dihapus.', 'success');
+        } else {
+          showAlert('GAGAL', result.message || 'Server gagal memproses permintaan hapus.', 'error');
+        }
+      } catch (e) {
+        console.error('Hapus riwayat error', e);
+        showAlert('KONEKSI TERPUTUS', 'Gagal menghubungi server untuk menghapus riwayat.', 'error');
+      }
+    });
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => { if (e.key === 'Escape') setPreviewImage(null); };
     window.addEventListener('keydown', handleKeyDown);
@@ -489,8 +636,11 @@ function App() {
   // =========================================
   if (isAuthLoading) {
     return (
-      <div className="tech-auth-container tech-bg" style={{ color: '#00f0ff', fontSize: '14px', fontFamily: 'monospace', letterSpacing: '1px' }}>
-        MEMUAT KONEKSI AMAN...
+      <div className="tech-auth-container tech-bg">
+        <div style={{ color: 'var(--neon-cyan)', fontSize: '16px', fontFamily: 'var(--font-tech)', letterSpacing: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <span className="blink-dot" style={{ width: '12px', height: '12px' }}></span>
+          [ MEMUAT KONEKSI AMAN... ]
+        </div>
       </div>
     );
   }
@@ -499,33 +649,7 @@ function App() {
   // RENDER: LAYAR 1 - LOGIN GOOGLE
   // =========================================
   if (!user && auth) {
-    return (
-      <div className="tech-auth-container tech-bg">
-        <div className="tech-auth-wrapper">
-          <div className="tech-header">
-            <img src={logoLmb} alt="LMB PENS Logo" className="tech-logo-img" />
-            <h1 className="tech-title">UKM REPORT</h1>
-            <p className="tech-subtitle">[ SISTEM PELAPORAN INTERNAL ]</p>
-          </div>
-          <div className="tech-panel">
-            <h2 className="tech-panel-title">OTENTIKASI SERVER</h2>
-            <div className="tech-panel-desc" style={{ textAlign: 'left', backgroundColor: 'rgba(0,0,0,0.3)', padding: '12px 15px', borderLeft: '3px solid var(--neon-cyan)', borderRadius: '6px', marginBottom: '24px', fontSize: '11px', fontFamily: 'var(--font-tech)' }}>
-              <div style={{ color: 'var(--neon-green)', marginBottom: '6px', fontWeight: 'bold', letterSpacing: '1px' }}>[ KONEKSI TERENKRIPSI ]</div>
-              <div style={{ color: 'var(--text-dim)' }}>&gt; Wajib menggunakan otentikasi identitas untuk masuk ke dalam terminal data.</div>
-            </div>
-            <button onClick={handleLogin} className="tech-btn-google">
-              <div className="tech-google-icon-wrapper">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="tech-google-icon" />
-              </div>
-              <div className="tech-btn-text-wrapper">
-                <span className="tech-btn-main-text">OTENTIKASI DENGAN GOOGLE</span>
-                <span className="tech-btn-sub-text">[ INISIASI KONEKSI ]</span>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return <AuthScreen logoLmb={logoLmb} onLogin={handleLogin} />;
   }
 
   // =========================================
@@ -533,53 +657,19 @@ function App() {
   // =========================================
   if (user && !userRole) {
     return (
-      <div className="tech-auth-container tech-bg">
-        <div className="tech-auth-wrapper">
-          <div className="tech-header">
-            <img src={logoLmb} alt="LMB PENS Logo" className="tech-logo-img" />
-            <h1 className="tech-title">TETAPKAN PERAN</h1>
-            <p className="tech-subtitle">[ {user.email} ]</p>
-          </div>
-          <div className="tech-panel">
-            
-            {!showAdminChallenge ? (
-              <>
-                <h2 className="tech-panel-title">PILIH HAK AKSES</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-                  <button onClick={() => setShowAdminChallenge(true)} className="tech-btn-action tech-btn-admin">
-                    [ 👑 MASUK SEBAGAI ADMIN ]
-                  </button>
-                  <button onClick={() => handleRoleSelect('staff')} className="tech-btn-action">
-                    [ 👤 MASUK SEBAGAI STAF ]
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 className="tech-panel-title" style={{ color: 'var(--neon-yellow)' }}>TANTANGAN KEAMANAN</h2>
-                <p className="tech-panel-desc">Masukkan Passcode Otorisasi Admin.</p>
-                <form onSubmit={handleAdminVerify} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input
-                    type="password"
-                    value={adminPin}
-                    onChange={(e) => setAdminPin(e.target.value.toUpperCase())}
-                    placeholder="PASSCODE..."
-                    className="form-input admin-passcode-input"
-                    style={{ borderColor: adminError ? 'var(--neon-red)' : 'var(--neon-yellow)', color: 'var(--neon-yellow)' }}
-                    autoFocus
-                  />
-                  {adminError && <div style={{ color: 'var(--neon-red)', fontSize: '11px', fontWeight: 'bold' }}>{adminError}</div>}
-                  <button type="submit" disabled={isAdminVerifying} className="tech-btn-action tech-btn-admin">
-                    {isAdminVerifying ? 'MEMERIKSA SANDI...' : 'VERIFIKASI'}
-                  </button>
-                  <button type="button" onClick={() => { setShowAdminChallenge(false); setAdminError(''); }} className="tech-btn-action tech-btn-cancel">BATAL</button>
-                </form>
-              </>
-            )}
-
-          </div>
-        </div>
-      </div>
+      <RoleSelection
+        user={user}
+        logoLmb={logoLmb}
+        showAdminChallenge={showAdminChallenge}
+        onShowAdminChallenge={() => setShowAdminChallenge(true)}
+        onRoleSelect={handleRoleSelect}
+        adminPin={adminPin}
+        onAdminPinChange={setAdminPin}
+        adminError={adminError}
+        isAdminVerifying={isAdminVerifying}
+        onAdminVerify={handleAdminVerify}
+        onCancelAdminChallenge={() => { setShowAdminChallenge(false); setAdminError(''); }}
+      />
     );
   }
 
@@ -588,41 +678,14 @@ function App() {
   // =========================================
   if (user && userRole === 'staff' && !isNameSet) {
     return (
-      <div className="tech-auth-container tech-bg">
-        <div className="tech-auth-wrapper">
-          <div className="tech-header">
-            <img src={logoLmb} alt="LMB PENS Logo" className="tech-logo-img" />
-            <h1 className="tech-title">PROFIL STAF</h1>
-            <p className="tech-subtitle">[ STAF TERVERIFIKASI ]</p>
-          </div>
-          <div className="tech-panel">
-            <h2 className="tech-panel-title">HALO, {user.displayName?.split(' ')[0] || 'STAF'}!</h2>
-            <div className="tech-panel-desc" style={{ textAlign: 'left', backgroundColor: 'rgba(0,0,0,0.3)', padding: '12px 15px', borderLeft: '3px solid var(--neon-cyan)', borderRadius: '6px', marginBottom: '24px', fontSize: '11px', fontFamily: 'var(--font-tech)' }}>
-              <div style={{ color: 'var(--neon-cyan)', marginBottom: '6px', fontWeight: 'bold', letterSpacing: '1px' }}>[ OTORISASI: LEVEL STAF ]</div>
-              <div style={{ color: 'var(--text-dim)' }}>&gt; Tetapkan identitas operasional untuk label penanggung jawab data.</div>
-            </div>
-            <div className="tech-input-container">
-              <span className="tech-input-icon">👤</span>
-              <input
-                type="text"
-                placeholder="PANGGILAN / RESMI (Wajib)"
-                className={`tech-input ${nameError ? 'input-error' : ''}`}
-                value={tempName}
-                onChange={handleTempNameChange}
-              />
-            </div>
-            {nameError && (
-              <div className="warning-card warning-card--error" style={{ marginBottom: '16px' }}>
-                <span className="warning-card__icon">⚠</span>
-                <span className="warning-card__text">{nameError}</span>
-              </div>
-            )}
-            <button onClick={handleSaveName} className="tech-btn-action">
-              SIMPAN & MASUK FORM 🚀
-            </button>
-          </div>
-        </div>
-      </div>
+      <ProfileSetup
+        user={user}
+        logoLmb={logoLmb}
+        tempName={tempName}
+        onTempNameChange={handleTempNameChange}
+        nameError={nameError}
+        onSaveName={handleSaveName}
+      />
     );
   }
 
@@ -659,328 +722,58 @@ function App() {
         </div>
 
         <h2 className={`form-title ${userRole === 'admin' ? 'admin-title-text' : ''}`}>
-          {userRole === 'admin' ? 'DASHBOARD REKAPITULASI' : 'FORMULIR PELAPORAN'}
+          {userRole === 'admin' ? 'DASHBOARD INFRASTRUKTUR' : 'FORMULIR PELAPORAN'}
         </h2>
         {openDropdown && <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>}
 
-        {/* ======================================= */}
-        {/* VIEW KHUSUS ADMIN                       */}
-        {/* ======================================= */}
         {userRole === 'admin' ? (
-          <>
-            <div className="section-heading admin-heading"><span>📊</span> PARAMETER REKAPITULASI</div>
-            <div className="global-section" style={{ borderColor: 'var(--neon-yellow)', boxShadow: 'inset 0 0 20px rgba(255, 215, 0, 0.03)' }}>
-              
-              <div className="input-group">
-                <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px', color: 'var(--neon-yellow)' }}>
-                  Pilih Bulan Pengumpulan:
-                </label>
-                <div className="custom-select-wrapper">
-                  <div
-                    className={`custom-select-trigger admin-select ${openDropdown === 'month' ? 'active' : ''}`}
-                    onClick={() => setOpenDropdown(openDropdown === 'month' ? null : 'month')}
-                    style={{ height: '52px', boxSizing: 'border-box' }}
-                  >
-                    <div className="custom-select-value">
-                      <span>[M]</span><span>{bulanOptions.find(b => b.value === selectedBulan)?.label || '-- Pilih Bulan --'}</span>
-                    </div>
-                    <span className="chevron-icon">▼</span>
-                  </div>
-                  {openDropdown === 'month' && (
-                    <div className="custom-select-dropdown admin-dropdown">
-                      {bulanOptions.map((b, idx) => (
-                        <div key={idx} className={`custom-select-item ${selectedBulan === b.value ? 'selected' : ''}`}
-                          onClick={() => handleBulanSelect(b.value)}>
-                          <span style={{ fontSize: '14px', opacity: selectedBulan === b.value ? 1 : 0.5 }}>{'>'}</span>
-                          <span>{b.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {isLoadingHistory ? (
-                <div style={{ textAlign: 'center', color: 'var(--neon-yellow)', fontFamily: 'var(--font-tech)', fontSize: '12px', marginTop: '10px' }}>
-                  MEMINDAI PANGKALAN DATA...
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontFamily: 'var(--font-tech)', fontSize: '12px', marginTop: '10px' }}>
-                  <button onClick={() => fetchHistory(true)} style={{ background:'transparent', border:'1px solid var(--neon-yellow)', color:'var(--neon-yellow)', padding:'6px 12px', borderRadius:'4px', cursor:'pointer', fontSize:'10px' }}>
-                    ↻ SEGARKAN DATABASE
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="section-heading admin-heading"><span>📂</span> DATA UKM TERKUMPUL</div>
-            <div className="global-section" style={{ borderColor: 'var(--neon-yellow)', boxShadow: 'inset 0 0 20px rgba(255, 215, 0, 0.03)' }}>
-              
-              <div className="admin-stats-box">
-                <div className="admin-stats-number">{adminUniqueUkms.length}</div>
-                <div className="admin-stats-label">TOTAL UKM YANG MENGUMPULKAN PADA BULAN INI</div>
-              </div>
-
-              {adminUniqueUkms.length === 0 ? (
-                <div className="empty-draft" style={{ borderColor: 'rgba(255, 215, 0, 0.2)', color: 'var(--neon-yellow)' }}>
-                  [ BELUM ADA DATA PADA BULAN INI ]
-                </div>
-              ) : (
-                <div className="ukm-grid">
-                  {adminUniqueUkms.map((ukmName, idx) => (
-                    <div className="ukm-badge-card" key={idx}>
-                      <div className="ukm-badge-icon">✓</div>
-                      <div className="ukm-badge-name" title={ukmName}>{ukmName}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
+          <AdminDashboard
+            spreadsheetId={spreadsheetId}
+            folderId={folderId}
+            driveUrlInput={driveUrlInput}
+            setDriveUrlInput={setDriveUrlInput}
+            setupLoading={setupLoading}
+            handleSystemSetup={handleSystemSetup}
+            handleResetToDefault={handleResetToDefault}
+            migrationLogs={migrationLogs}
+            onDeleteMigrationLog={handleDeleteMigrationLog}
+          />
         ) : (
-          /* ======================================= */
-          /* VIEW KHUSUS STAF (FORM PELAPORAN)       */
-          /* ======================================= */
-          <>
-            <div className="section-heading">
-              <span className={`step-number ${completedSteps.bulan ? 'step-badge--done' : ''}`}>1</span>
-              PARAMETER UTAMA
-            </div>
-            <div className="global-section">
-
-              <div className="input-group">
-                <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Pilih Bulan Laporan:</label>
-                <div className="custom-select-wrapper">
-                  <div
-                    className={`custom-select-trigger ${openDropdown === 'month' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
-                    onClick={() => !isLoading && setOpenDropdown(openDropdown === 'month' ? null : 'month')}
-                    style={{ height: '52px', boxSizing: 'border-box' }}
-                  >
-                    <div className="custom-select-value">
-                      <span>[M]</span><span>{bulanOptions.find(b => b.value === selectedBulan)?.label || '-- Pilih Bulan --'}</span>
-                    </div>
-                    <span className="chevron-icon">▼</span>
-                  </div>
-                  {openDropdown === 'month' && (
-                    <div className="custom-select-dropdown">
-                      {bulanOptions.map((b, idx) => (
-                        <div key={idx} className={`custom-select-item ${selectedBulan === b.value ? 'selected' : ''}`}
-                          onClick={() => handleBulanSelect(b.value)}>
-                          <span style={{ fontSize: '14px', opacity: selectedBulan === b.value ? 1 : 0.5 }}>{'>'}</span>
-                          <span>{b.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="input-group">
-                <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>
-                  Pilih Tanggal (Senin):
-                  {isTanggalLocked && <span className="lock-badge">🔒 Pilih Bulan Dulu</span>}
-                </label>
-
-                <div className="custom-select-wrapper" style={{ opacity: isTanggalLocked ? 0.4 : 1, pointerEvents: isTanggalLocked ? 'none' : 'auto', transition: '0.3s' }}>
-                  <div
-                    className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
-                    onClick={() => !isLoading && !isTanggalLocked && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
-                    style={{ height: '52px', boxSizing: 'border-box' }}
-                  >
-                    <div className="custom-select-value">
-                      {tanggal ? (() => {
-                        const hasReport = submittedUkms.length > 0;
-                        return (
-                          <>
-                            <span>[D]</span>
-                            <span>
-                              {availableDates.find(d => d.value === tanggal)?.label || tanggal}
-                              {hasReport && <span style={{ marginLeft: '8px', color: '#39ff14' }}>[Terisi]</span>}
-                            </span>
-                          </>
-                        );
-                      })() : <span className="custom-select-placeholder">-- Menunggu Input --</span>}
-                    </div>
-                    <span className="chevron-icon">▼</span>
-                  </div>
-                  {openDropdown === 'date' && (
-                    <div className="custom-select-dropdown">
-                      {availableDates.length > 0 ? availableDates.map((dateObj, idx) => {
-                        const hasReport = historyData.some(h => h.tanggal === dateObj.value);
-                        return (
-                          <div key={idx} className={`custom-select-item ${tanggal === dateObj.value ? 'selected' : ''}`}
-                            onClick={() => handleTanggalSelect(dateObj.value)}>
-                            <span style={{ fontSize: '14px', opacity: tanggal === dateObj.value ? 1 : 0.5 }}>{'>'}</span>
-                            <span>
-                              {dateObj.label}
-                              {hasReport && <span style={{ marginLeft: '8px', color: '#39ff14' }}>[Terisi]</span>}
-                            </span>
-                          </div>
-                        );
-                      }) : (
-                        <div className="custom-select-item" style={{ justifyContent: 'center', color: '#4b5563', cursor: 'default' }}>TIDAK ADA DATA</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: 'rgba(0,240,255,0.05)', borderRadius: '8px', border: '1px solid rgba(0,240,255,0.2)', textAlign: 'center', fontFamily: 'var(--font-tech)' }}>
-                {!tanggal ? (
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>PILIH TANGGAL UNTUK MELANJUTKAN</span>
-                ) : isLoadingHistory ? (
-                  <span style={{ fontSize: '12px', color: '#00f0ff' }}>MEMINDAI DATABASE...</span>
-                ) : submittedUkms.length > 0 ? (
-                  <span style={{ fontSize: '12px', color: '#39ff14', fontWeight: 'bold' }}>
-                    [ OK ] DITEMUKAN {submittedUkms.length} DATA PADA TANGGAL INI.
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '12px', color: '#00f0ff' }}>[ KOSONG ] BELUM ADA DATA PADA TANGGAL INI.</span>
-                )}
-              </div>
-            </div>
-
-            <div className="section-heading" style={{ opacity: isEntriLocked ? 0.4 : 1, transition: '0.3s' }}>
-              <span className={`step-number ${completedSteps.tanggal && laporans.length > 0 ? 'step-badge--done' : ''}`}>2</span>
-              ENTRI DATA
-              {isEntriLocked && <span className="lock-badge">🔒 Pilih Tanggal Dulu</span>}
-            </div>
-
-            <div className="active-form-section" style={{ opacity: isEntriLocked ? 0.35 : 1, pointerEvents: isEntriLocked ? 'none' : 'auto', transition: '0.3s', filter: isEntriLocked ? 'grayscale(0.5)' : 'none' }}>
-              <div className="input-group">
-                <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Nama UKM:</label>
-                <input
-                  type="text" value={currentUkm} onChange={handleUkmChange} className="form-input"
-                  placeholder="Cth: UKM Tari" disabled={isLoading}
-                  style={{
-                    height: '52px', boxSizing: 'border-box',
-                    borderColor: ukmError ? 'var(--neon-red)' : undefined,
-                    outlineColor: ukmError ? 'var(--neon-red)' : undefined,
-                    backgroundColor: ukmError ? 'rgba(255,0,60,0.08)' : undefined
-                  }}
-                />
-                {ukmError && (
-                  <div className="warning-card warning-card--error">
-                    <span className="warning-card__icon">!</span>
-                    <span className="warning-card__text">{ukmError}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="input-group">
-                <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Lampiran File (Maks: 3):</label>
-                {currentFotos.length < 3 && (
-                  <label className="file-dropzone" style={{ opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto' }}>
-                    <input type="file" accept="image/jpeg, image/png, image/jpg, image/webp" multiple onChange={handleFileChange} className="hidden-input" disabled={isLoading} />
-                    <span className="dropzone-icon">📁</span>
-                    <span className="dropzone-text">[ KLIK/TAP UNTUK MENGUNGGAH ]</span>
-                    <span className="dropzone-subtext">MENDUKUNG FORMAT: JPG/PNG/WEBP</span>
-                  </label>
-                )}
-
-                {currentFotos.length > 0 && (
-                  <div className="file-chips-container">
-                    {currentFotos.map((foto, index) => {
-                      const previewUrl = URL.createObjectURL(foto);
-                      return (
-                        <div className="file-chip" key={index}>
-                          <button type="button" className="tech-file-card" onClick={() => setPreviewImage(previewUrl)} title="Klik untuk lihat gambar">
-                            <span className="tech-file-icon">🖼️</span>
-                            <span className="tech-file-name">{foto.name}</span>
-                          </button>
-                          <button type="button" onClick={() => removeCurrentFoto(index)} className="file-chip-remove" disabled={isLoading}>✕</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-              <button type="button" onClick={addToDraft} className="btn-add-draft" disabled={isLoading}>
-                {isLoading ? 'MENYIAPKAN DATA...' : '+ MASUKKAN KE ANTREAN'}
-              </button>
-            </div>
-
-            <div className="section-heading" style={{ opacity: isAntreanLocked ? 0.4 : 1, transition: '0.3s' }}>
-              <span className={`step-number ${laporans.length > 0 ? 'step-badge--done' : ''}`}>3</span>
-              ANTREAN PENGIRIMAN ({laporans.length})
-              {isAntreanLocked && <span className="lock-badge">🔒 Pilih Tanggal Dulu</span>}
-            </div>
-
-            <div className="draft-list-wrapper" style={{ opacity: isAntreanLocked ? 0.35 : 1, pointerEvents: isAntreanLocked ? 'none' : 'auto', transition: '0.3s', filter: isAntreanLocked ? 'grayscale(0.5)' : 'none', padding: '16px' }}>
-              <div className="draft-list-section">
-                {laporans.length === 0 ? (
-                  <div className="empty-draft">[ ANTREAN KOSONG ]</div>
-                ) : (
-                  laporans.map((laporan, index) => {
-                    const currentProgress = uploadProgress[laporan.id] || 0;
-                    const isProcessing = processingId === laporan.id || currentProgress > 0;
-                    const isSuccess = currentProgress === 100;
-                    return (
-                      <div className={`draft-item ${isProcessing ? 'processing' : ''}`} key={laporan.id}>
-                        <div className="draft-info">
-                          <span className="draft-title">[{index + 1}] {laporan.namaUkm}</span>
-
-                          <div className="draft-file-list">
-                            {laporan.fotos.map((f, idx) => (
-                              <button key={idx} type="button" className="tech-file-card" onClick={() => setPreviewImage(f.data)} title="Klik untuk lihat gambar">
-                                <span className="tech-file-icon">🖼️</span>
-                                <span>FILE_{idx + 1}</span>
-                              </button>
-                            ))}
-                          </div>
-
-                          <span className="draft-subtitle">Lampiran: {laporan.fotos.length} file foto tersimpan</span>
-                          {isProcessing && (
-                            <div className="progress-container">
-                              <span className={`draft-status-text ${isSuccess ? 'success' : ''}`}>
-                                {isSuccess ? '[ SELESAI ] Data Terkirim' : `> MENGUNGGAH DATA KONEKSI (${currentProgress}%)`}
-                              </span>
-                              <div className="progress-bar-bg">
-                                <div className={`progress-bar-fill ${isSuccess ? 'success' : ''}`} style={{ width: `${currentProgress}%` }}></div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <button type="button" onClick={() => removeDraft(laporan.id)} className="btn-delete-draft" disabled={isLoading}>✕</button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <button type="button" onClick={handleSubmit} disabled={isLoading || laporans.length === 0} className="submit-button">
-                {isLoading ? 'MENGIRIMKAN...' : `JALANKAN PENGUNGGAHAN (${laporans.length})`}
-              </button>
-            </div>
-          </>
+          <StaffDashboard
+            openDropdown={openDropdown}
+            setOpenDropdown={setOpenDropdown}
+            bulanOptions={bulanOptions}
+            selectedBulan={selectedBulan}
+            availableDates={availableDates}
+            tanggal={tanggal}
+            submittedUkms={submittedUkms}
+            isTanggalLocked={isTanggalLocked}
+            isEntriLocked={isEntriLocked}
+            isAntreanLocked={isAntreanLocked}
+            completedSteps={completedSteps}
+            isLoading={isLoading}
+            isLoadingHistory={isLoadingHistory}
+            currentUkm={currentUkm}
+            currentFotos={currentFotos}
+            ukmError={ukmError}
+            laporans={laporans}
+            uploadProgress={uploadProgress}
+            processingId={processingId}
+            historyData={historyData}
+            setPreviewImage={setPreviewImage}
+            handleBulanSelect={handleBulanSelect}
+            handleTanggalSelect={handleTanggalSelect}
+            handleUkmChange={handleUkmChange}
+            handleFileChange={handleFileChange}
+            removeCurrentFoto={removeCurrentFoto}
+            addToDraft={addToDraft}
+            handleSubmit={handleSubmit}
+          />
         )}
       </div>
 
-      {modal.isOpen && (
-        <div className="modal-overlay">
-          <div className={`modal-content ${modal.type}`}>
-            <div className={`modal-icon ${modal.type}`}>
-              {modal.type === 'warning' && '⚠️'} {modal.type === 'success' && '✓'} {modal.type === 'error' && '!'} {modal.type === 'confirm' && '?'}
-            </div>
-            <h3 className="modal-title">{modal.title}</h3>
-            <p className="modal-message">{modal.message}</p>
-            <div className="modal-actions">
-              {modal.type === 'confirm' && <button onClick={modal.onCancel} className="modal-btn secondary">BATAL</button>}
-              <button onClick={modal.onConfirm} className="modal-btn primary">{modal.type === 'confirm' ? 'KONFIRMASI' : 'MENGERTI'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {previewImage && (
-        <div className="image-preview-overlay" onClick={() => setPreviewImage(null)}>
-          <button className="image-preview-close" onClick={(e) => { e.stopPropagation(); setPreviewImage(null); }}>✕</button>
-          <div className="image-preview-container" onClick={(e) => e.stopPropagation()}>
-            <span className="image-preview-hint">Klik di luar gambar atau tekan ESC untuk menutup</span>
-            <img src={previewImage} alt="Full Preview" className="image-preview-img" />
-          </div>
-        </div>
-      )}
+      <Modal modal={modal} />
+      <ImagePreviewOverlay previewImage={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }
