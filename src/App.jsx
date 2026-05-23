@@ -92,7 +92,7 @@ function App() {
   const [completedSteps, setCompletedSteps] = useState({ bulan: false, tanggal: false });
 
   // URL Backend
-  const scriptURL = import.meta.env.VITE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz1QI1qt1EU_KDwFbhOL9KiDjNLIKAifA3bKSFJwQKuPEhz0W5kX_bDepq-QlT7e2VZ/exec';
+  const scriptURL = import.meta.env.VITE_API_URL || 'https://script.google.com/macros/s/AKfycbx5YBwntBuQQ0SFy5Zv2-3Mt4-K46HAx45z9kWWTiYy5Bjz5TlAhzOESh2QUv7pTDWiDQ/exec';
 
   const showAlert  = (title, message, type = 'warning') => setModal({ isOpen: true, title, message, type, onConfirm: closeModal });
   const showConfirm = (title, message, onConfirmCallback) => setModal({ isOpen: true, title, message, type: 'confirm', onConfirm: () => { onConfirmCallback(); closeModal(); }, onCancel: closeModal });
@@ -129,6 +129,10 @@ function App() {
         setMigrationLogs(updatedLogs);
       }
     );
+  };
+
+  const handleRemoveQueueItem = (idToRemove) => {
+    setLaporans((prevLaporans) => prevLaporans.filter(laporan => laporan.id !== idToRemove));
   };
 
   const handleSystemSetup = async (e) => {
@@ -768,6 +772,9 @@ function App() {
             removeCurrentFoto={removeCurrentFoto}
             addToDraft={addToDraft}
             handleSubmit={handleSubmit}
+            removeDraft={(idToRemove) => {
+              setLaporans((prev) => prev.filter(laporan => laporan.id !== idToRemove));
+            }}
           />
         )}
       </div>

@@ -28,6 +28,7 @@ export default function StaffDashboard({
   handleFileChange,
   removeCurrentFoto,
   addToDraft,
+  removeDraft,
   handleSubmit
 }) {
   return (
@@ -168,16 +169,55 @@ export default function StaffDashboard({
           )}
 
           {currentFotos.length > 0 && (
-            <div className="file-chips-container">
+            <div className="file-chips-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '12px' }}>
               {currentFotos.map((foto, index) => {
                 const previewUrl = URL.createObjectURL(foto);
                 return (
-                  <div className="file-chip" key={index}>
-                    <button type="button" className="tech-file-card" onClick={() => setPreviewImage(previewUrl)} title="Klik untuk lihat gambar">
+                  /* SUNTIKAN STYLE PADA FILE CHIP AGAR SEJAJAR */
+                  <div className="file-chip" key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+                    
+                    <button 
+                      type="button" 
+                      className="tech-file-card" 
+                      onClick={() => setPreviewImage(previewUrl)} 
+                      title="Klik untuk lihat gambar"
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', height: '42px', boxSizing: 'border-box', overflow: 'hidden' }}
+                    >
                       <span className="tech-file-icon">🖼️</span>
-                      <span className="tech-file-name">{foto.name}</span>
+                      <span className="tech-file-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '11px', textAlign: 'left' }}>
+                        {foto.name}
+                      </span>
                     </button>
-                    <button type="button" onClick={() => removeCurrentFoto(index)} className="file-chip-remove" disabled={isLoading}>✕</button>
+                    
+                    {/* TOMBOL SILANG SAKTI (DIPRESISIKAN DIMENSINYA) */}
+                    <button 
+                      type="button" 
+                      onClick={() => removeCurrentFoto(index)} 
+                      className="file-chip-remove" 
+                      disabled={isLoading}
+                      style={{
+                        background: 'rgba(255, 0, 60, 0.1)',
+                        border: '1px solid #ff003c',
+                        borderRadius: '4px',
+                        color: '#ff003c',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '42px',   // Mengunci lebar agar kotak sempurna sejajar card file
+                        height: '42px',  // Mengunci tinggi sejajar card file
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        flexShrink: 0,   // Mencegah tombol gepeng saat nama file terlalu panjang
+                        boxSizing: 'border-box',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => { e.target.style.background = '#ff003c'; e.target.style.color = '#fff'; }}
+                      onMouseLeave={(e) => { e.target.style.background = 'rgba(255, 0, 60, 0.1)'; e.target.style.color = '#ff003c'; }}
+                    >
+                      ✕
+                    </button>
+
                   </div>
                 );
               })}
