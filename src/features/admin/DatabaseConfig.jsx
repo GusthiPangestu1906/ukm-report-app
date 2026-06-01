@@ -10,8 +10,14 @@ export default function DatabaseConfig({
   handleResetToDefault,
   migrationLogs,
   onDeleteMigrationLog,
+  addMigrationLog,
+  showConfirm,
+  showAlert,
   isMobile
 }) {
+  const [activeTab, setActiveTab] = useState('akses');
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [healthData, setHealthData] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [sysMaintenance, setSysMaintenance] = useState(false);
@@ -47,13 +53,33 @@ export default function DatabaseConfig({
       });
       const result = await response.json();
       if (result.status === 'success' || result.data) {
-        setHealthData(result.data || result);
+        const healthResult = result.data || result;
+        setHealthData(healthResult);
+        if (addMigrationLog) {
+          addMigrationLog('DIAGNOSIS SERVER: BERHASIL');
+        }
       } else {
-        alert('❌ Sektor inti gagal mengembalikan parameter kesehatan.');
+        const message = '❌ Sektor inti gagal mengembalikan parameter kesehatan.';
+        if (addMigrationLog) {
+          addMigrationLog('DIAGNOSIS SERVER: GAGAL');
+        }
+        if (showAlert) {
+          showAlert('GAGAL DIAGNOSIS', message, 'error');
+        } else {
+          alert(message);
+        }
       }
     } catch (err) {
       console.error(err);
-      alert('❌ Diagnosis terhenti. Koneksi serverless terputus.');
+      const message = '❌ Diagnosis terhenti. Koneksi serverless terputus.';
+      if (addMigrationLog) {
+        addMigrationLog('DIAGNOSIS SERVER: GAGAL KONEKSI');
+      }
+      if (showAlert) {
+        showAlert('GAGAL DIAGNOSIS', message, 'error');
+      } else {
+        alert(message);
+      }
     } finally {
       setHealthLoading(false);
     }
@@ -76,219 +102,344 @@ export default function DatabaseConfig({
       const result = await res.json();
       if (result.status === 'success') {
         setSysMaintenance(targetState);
-        alert(targetState ? '🚨 KILL SWITCH AKTIF: Web staff resmi di-lockdown!' : '🟢 SERVER OPEN: Akses pengisian laporan dibuka kembali.');
+        if (addMigrationLog) {
+          addMigrationLog(targetState ? 'MENUTUP AKSES SISTEM (MAINTENANCE)' : 'MEMBUKA AKSES SISTEM');
+        }
+        const successTitle = targetState ? 'AKSES SISTEM DIMATIKAN' : 'AKSES SISTEM DINYALAKAN';
+        const successMessage = targetState
+          ? 'Web staff kini dalam mode maintenance dan akses sementara ditutup.'
+          : 'Akses web staff telah dibuka kembali. Staf dapat melanjutkan pengisian laporan.';
+        if (showAlert) {
+          showAlert(successTitle, successMessage, targetState ? 'error' : 'success');
+        } else {
+          alert(successMessage);
+        }
+      } else {
+        const errorMessage = result.message || 'Gagal mengubah parameter keamanan server.';
+        if (showAlert) {
+          showAlert('GAGAL MENGUBAH STATUS SISTEM', errorMessage, 'error');
+        } else {
+          alert(errorMessage);
+        }
       }
     } catch (err) {
-      alert('Gagal mengubah parameter keamanan server.');
+      if (showAlert) {
+        showAlert('GAGAL MENGUBAH STATUS SISTEM', 'Koneksi server terputus. Silakan coba lagi.', 'error');
+      } else {
+        alert('Gagal mengubah parameter keamanan server.');
+      }
     } finally {
       setMaintLoading(false);
     }
   };
 
+  const confirmToggleMaintenance = () => {
+    const targetState = !sysMaintenance;
+    const title = targetState ? 'MATIKAN AKSES SISTEM?' : 'NYALAKAN AKSES SISTEM?';
+    const message = targetState
+      ? 'Jika dilanjutkan, akses web staff akan ditutup sementara untuk maintenance.'
+      : 'Jika dilanjutkan, akses web staff akan dibuka kembali dan dapat digunakan lagi.';
+
+    if (showConfirm) {
+      showConfirm(title, message, handleToggleMaintenance);
+    } else if (window.confirm(`${title}\n\n${message}`)) {
+      handleToggleMaintenance();
+    }
+  };
+
   const isEngineActive = !!healthData;
+  const diagnosisLog = migrationLogs.find(log => log.action.includes('DIAGNOSIS'));
 
   return (
-    <div className="tab-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ width: '100%', boxSizing: 'border-box', maxWidth: '100%' }}>
       
-      {/* ACCESS SYSTEM CONTROLLER (KILL SWITCH VIEW) */}
-      <div>
-        <div className="section-heading admin-heading" style={{ marginBottom: '16px', textAlign: 'left', color: sysMaintenance ? '#ff003c' : 'var(--neon-green)', fontSize: isMobile ? '12px' : '14px' }}>
-          <span>🚨</span> ACCESS SYSTEM CONTROLLER
+      {/* DROPDOWN MENU ADMIN (PENGGANTI TAB UNTUK HP) */}
+      <div className="input-group" style={{ marginBottom: isMobile ? '18px' : '28px', maxWidth: '100%' }}>
+        <div className="custom-select-wrapper">
+          {isMenuOpen && <div className="custom-select-overlay" onClick={() => setIsMenuOpen(false)}></div>}
+          <div
+            className={`custom-select-trigger admin-menu-trigger ${isMenuOpen ? 'active' : ''}`}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            style={{ height: isMobile ? '52px' : '54px', boxSizing: 'border-box', position: 'relative', zIndex: isMenuOpen ? 45 : 1, fontSize: isMobile ? '12px' : '13px', cursor: 'pointer' }}
+          >
+            <div className="custom-select-value">
+              <span style={{ fontWeight: 'bold', fontSize: isMobile ? '11px' : '12px' }}>
+                {
+                  activeTab === 'akses' ? '🚨 KONTROL AKSES' :
+                  activeTab === 'diagnosis' ? '🖥️ DIAGNOSIS SERVER' : '⚙️ TAUTAN DATABASE'
+                }
+              </span>
+            </div>
+            <span className="chevron-icon">▼</span>
+          </div>
+          {isMenuOpen && (
+            <div className="custom-select-dropdown admin-dropdown-menu" style={{ zIndex: 50, maxHeight: isMobile ? '200px' : '280px' }}>
+              <div className={`custom-select-item ${activeTab === 'akses' ? 'selected' : ''}`} onClick={() => { setActiveTab('akses'); setIsMenuOpen(false); }}>
+                <span style={{ fontSize: isMobile ? '12px' : '14px', opacity: activeTab === 'akses' ? 1 : 0.5 }}>{'>'}</span>
+                <span style={{ fontWeight: 'bold', fontSize: isMobile ? '11px' : '12px' }}>🚨 KONTROL AKSES (KILL SWITCH)</span>
+              </div>
+              <div className={`custom-select-item ${activeTab === 'diagnosis' ? 'selected' : ''}`} onClick={() => { setActiveTab('diagnosis'); setIsMenuOpen(false); }}>
+                <span style={{ fontSize: isMobile ? '12px' : '14px', opacity: activeTab === 'diagnosis' ? 1 : 0.5 }}>{'>'}</span>
+                <span style={{ fontWeight: 'bold', fontSize: isMobile ? '11px' : '12px' }}>🖥️ DIAGNOSIS SERVER</span>
+              </div>
+              <div className={`custom-select-item ${activeTab === 'database' ? 'selected' : ''}`} onClick={() => { setActiveTab('database'); setIsMenuOpen(false); }}>
+                <span style={{ fontSize: isMobile ? '12px' : '14px', opacity: activeTab === 'database' ? 1 : 0.5 }}>{'>'}</span>
+                <span style={{ fontWeight: 'bold', fontSize: isMobile ? '11px' : '12px' }}>⚙️ TAUTAN DATABASE</span>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="global-section" style={{ borderColor: sysMaintenance ? '#ff003c' : 'rgba(255,255,255,0.08)', margin: 0, padding: isMobile ? '16px 12px' : '20px', background: sysMaintenance ? 'rgba(255,0,60,0.02)' : 'none' }}>
-          <div className="tech-panel-desc" style={{ textAlign: 'left', marginBottom: '16px', color: 'var(--text-dim)', fontSize: '11px', lineHeight: '1.8' }}>
-            Status Gerbang Server: {sysMaintenance ? <b style={{color: '#ff003c'}}>[ STATUS: MAINTENANCE - DITUTUP 🔒 ]</b> : <b style={{color: 'var(--neon-green)'}}>[ STATUS: OPERASIONAL - DIBUKA 🔓 ]</b>}
-            <p style={{margin: '8px 0 0 0'}}>Gunakan tombol di bawah ini untuk mematikan sistem kiriman web staff secara instan jika dalam masa pemeliharaan kepengurusan.</p>
+      </div>
+
+      {/* ACCESS SYSTEM CONTROLLER (KILL SWITCH VIEW) */}
+      {activeTab === 'akses' && (
+      <div style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+        <div className="active-form-section admin-section-card" style={{ margin: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '14px' : '18px' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: isMobile ? '16px' : '14px', width: '100%', padding: isMobile ? '16px' : '20px', textAlign: 'left', background: sysMaintenance ? 'var(--neon-red-dim)' : 'rgba(16, 185, 129, 0.05)', border: `1px solid ${sysMaintenance ? 'var(--neon-red)' : 'var(--neon-green)'}`, borderRadius: '12px', boxSizing: 'border-box' }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span className={`admin-status-dot ${sysMaintenance ? 'inactive' : 'active'}`}></span>
+                    <span style={{ fontSize: isMobile ? '11px' : '12px', color: 'var(--text-dim)', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Status Sistem</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                    <span style={{ fontSize: isMobile ? '18px' : '20px', color: sysMaintenance ? 'var(--neon-red)' : 'var(--neon-green)', fontWeight: '800', letterSpacing: '-0.5px' }}>{sysMaintenance ? 'Maintenance' : 'Operasional'}</span>
+                  </div>
+                  {migrationLogs.find(log => log.action.includes('AKSES SISTEM')) && (
+                    <div style={{ marginTop: '8px', fontSize: isMobile ? '10px' : '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-tech)', lineHeight: '1.5' }}>
+                      Terakhir diubah oleh: <strong style={{ color: 'var(--text-main)' }}>{migrationLogs.find(log => log.action.includes('AKSES SISTEM')).actor}</strong>
+                      <br />Pada: {migrationLogs.find(log => log.action.includes('AKSES SISTEM')).date}
+                    </div>
+                  )}
+                </div>
+                <div style={{ width: isMobile ? '100%' : 'auto', background: sysMaintenance ? 'var(--neon-red)' : 'var(--neon-green)', padding: '10px 16px', borderRadius: '8px', textAlign: 'center', boxSizing: 'border-box', boxShadow: `0 4px 12px ${sysMaintenance ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}` }}>
+                  <span style={{ fontSize: isMobile ? '12px' : '13px', color: '#ffffff', fontWeight: '800', letterSpacing: '0.5px' }}>{sysMaintenance ? 'AKSES DITUTUP' : 'AKSES TERBUKA'}</span>
+                </div>
+            </div>
           </div>
           <button
             type="button"
-            onClick={handleToggleMaintenance}
+            onClick={confirmToggleMaintenance}
             disabled={maintLoading}
+            className={`admin-button-toggle ${maintLoading ? 'loading' : ''} ${sysMaintenance ? 'active danger' : 'active'}`}
             style={{
+              marginTop: isMobile ? '24px' : '28px',
+              padding: isMobile ? '16px' : '20px',
+              minHeight: isMobile ? '56px' : '64px',
+              fontSize: isMobile ? '14px' : '15px',
+              letterSpacing: '1px',
               width: '100%',
-              padding: '12px',
-              fontFamily: 'var(--font-tech)',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              background: sysMaintenance ? 'transparent' : 'rgba(255, 0, 60, 0.08)',
-              border: '1px solid #ff003c',
-              color: '#ff003c',
-              borderRadius: '4px',
-              boxShadow: sysMaintenance ? 'none' : '0 0 10px rgba(255, 0, 60, 0.15)',
-              transition: 'all 0.25s ease'
+              background: maintLoading ? (sysMaintenance ? 'rgba(255, 0, 60, 0.3)' : 'rgba(0, 240, 255, 0.3)') : (sysMaintenance ? 'var(--neon-red)' : 'var(--neon-green)'),
+              color: maintLoading ? 'var(--text-dim)' : (sysMaintenance ? '#fff' : '#000'),
+              borderColor: maintLoading ? (sysMaintenance ? 'rgba(255, 0, 60, 0.5)' : 'rgba(0, 240, 255, 0.5)') : (sysMaintenance ? 'var(--neon-red)' : 'var(--neon-green)'),
+              cursor: maintLoading ? 'not-allowed' : 'pointer',
+              opacity: maintLoading ? 0.6 : 1
             }}
           >
-            {maintLoading ? 'MEMPROSES OTORISASI...' : sysMaintenance ? '[ 🔓 NYALAKAN KEMBALI AKSES WEB STAFF ]' : '[ 🔒 MATIKAN AKSES SISTEM WEB / MAINTENANCE ]'}
+            {maintLoading ? (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                ⏳ MEMPROSES...
+              </span>
+            ) : (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {sysMaintenance ? '🔓 BUKA AKSES SISTEM' : '🔒 TUTUP AKSES SISTEM'}
+              </span>
+            )}
           </button>
         </div>
-      </div>
-
-      {/* PENGATURAN TAUTAN DATABASE */}
-      <div>
-        <div className="section-heading admin-heading" style={{ marginBottom: '16px', textAlign: 'left', fontSize: isMobile ? '12px' : '14px' }}>
-          <span>⚙️</span> PENGATURAN TAUTAN DATABASE
-        </div>
-        <div className="global-section" style={{ borderColor: 'var(--neon-yellow)', boxShadow: 'inset 0 0 20px rgba(255, 215, 0, 0.03)', margin: 0, padding: isMobile ? '16px 12px' : '20px' }}>
-          <div className="tech-panel-desc" style={{ textAlign: 'left', marginBottom: '16px', color: 'var(--text-dim)', fontSize: '11px', lineHeight: '2' }}>
-            <span style={{color: 'var(--neon-green)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px'}}>
-              <span className="blink-dot green"></span> [ STATUS: TERHUBUNG KE SPREADSHEET {spreadsheetId ? 'KUSTOM' : 'UTAMA (DEFAULT)'} ]
-            </span>
-            <div style={{marginTop: '10px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px'}}>
-              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '4px' : '10px' }}>
-                <span style={{ color: 'var(--text-dim)', fontSize: '11px', minWidth: '100px' }}>📊 SPREADSHEET</span>
-                {spreadsheetId ? (
-                  <a href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}`} target="_blank" rel="noreferrer"
-                     style={{ color: 'var(--neon-cyan)', textDecoration: 'none', borderBottom: '1px dashed var(--neon-cyan)', fontSize: '11px', fontFamily: 'var(--font-tech)', wordBreak: 'break-all' }}>
-                    {spreadsheetId.slice(0, isMobile ? 8 : 15)}...{spreadsheetId.slice(-6)} ↗
-                  </a>
-                ) : (
-                  <span style={{ color: 'var(--neon-cyan)', fontSize: '11px' }}>DEFAULT</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '4px' : '10px' }}>
-                <span style={{ color: 'var(--text-dim)', fontSize: '11px', minWidth: '100px' }}>📁 FOLDER DRIVE</span>
-                {folderId ? (
-                  <a href={`https://drive.google.com/drive/folders/${folderId}`} target="_blank" rel="noreferrer"
-                     style={{ color: 'var(--neon-yellow)', textDecoration: 'none', borderBottom: '1px dashed var(--neon-yellow)', fontSize: '11px', fontFamily: 'var(--font-tech)', wordBreak: 'break-all' }}>
-                    {folderId.slice(0, isMobile ? 8 : 15)}...{folderId.slice(-6)} ↗
-                  </a>
-                ) : (
-                  <span style={{ color: 'var(--neon-yellow)', fontSize: '11px' }}>DEFAULT</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <form onSubmit={handleSystemSetup} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input
-              type="text"
-              placeholder="PASTE LINK FOLDER G-DRIVE BARU DI SINI..."
-              className="form-input"
-              value={driveUrlInput}
-              onChange={(e) => setDriveUrlInput(e.target.value)}
-              disabled={setupLoading}
-              style={{ borderColor: 'rgba(255, 215, 0, 0.15)', color: 'var(--neon-yellow)', textAlign: 'center', fontSize: '11px' }}
-              required
-            />
-            <button type="submit" disabled={setupLoading} className="tech-btn-action tech-btn-admin" style={{ padding: '12px', fontSize: '11px' }}>
-              {setupLoading ? 'MEMPROSES TAUTAN SERVER...' : '[ PERBARUI LINK G-DRIVE SEKARANG ]'}
-            </button>
-          </form>
-
-          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px dashed rgba(255, 215, 0, 0.15)' }}>
-            <button 
-              type="button"
-              onClick={handleResetToDefault} 
-              disabled={setupLoading}
-              className="tech-btn-action" 
-              style={{ background: 'rgba(255, 215, 0, 0.01)', border: '1px solid rgba(255, 215, 0, 0.2)', color: 'var(--neon-yellow)', fontSize: '11px', fontFamily: 'var(--font-tech)', padding: '12px', width: '100%' }}
-            >
-              [ ↺ EMERGENCY RESET: KEMBALI KE DATABASE UTAMA ]
-            </button>
-          </div>
-        </div>
-      </div>
+      </div>)}
 
       {/* CORE ENGINE DIAGNOSTICS */}
-      <div>
-        <div className="section-heading admin-heading" style={{ marginBottom: '16px', textAlign: 'left', fontSize: isMobile ? '12px' : '14px' }}>
-          <span>🖥️</span> CORE ENGINE DIAGNOSTICS
-        </div>
-        <div className="global-section" style={{ borderColor: 'var(--neon-yellow)', boxShadow: 'inset 0 0 20px rgba(255, 215, 0, 0.03)', margin: 0, padding: isMobile ? '16px 12px' : '20px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontFamily: 'var(--font-tech)', fontSize: '11px', textAlign: 'left', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255,255,255,0.05)', paddingBottom: '6px', gap: '10px' }}>
-              <span style={{ color: 'var(--text-dim)' }}>MAIN SPREADSHEET DATA LINK:</span>
-              <span style={{ color: healthData?.spreadsheetStatus?.includes('🟢') ? 'var(--neon-green)' : 'inherit', fontWeight: 'bold' }}>
+      {activeTab === 'diagnosis' && (
+      <div style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+        <div className="active-form-section admin-section-card" style={{ margin: 0, padding: isMobile ? '14px' : '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '12px', fontFamily: 'var(--font-tech)' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: isMobile ? '10px' : '12px', background: 'var(--bg-dark)', borderRadius: '10px', border: '1px solid var(--border-dim)', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? '8px' : '0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                <svg width={isMobile ? '14' : '16'} height={isMobile ? '14' : '16'} viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                <span style={{ fontSize: isMobile ? '10px' : '11px', color: 'var(--text-dim)', fontWeight: '700', whiteSpace: 'nowrap' }}>SPREADSHEET</span>
+              </div>
+              <span style={{ fontSize: isMobile ? '11px' : '12px', color: healthData?.spreadsheetStatus?.includes('🟢') ? 'var(--neon-green)' : 'var(--text-main)', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                 {healthData ? healthData.spreadsheetStatus : 'UNCHECKED ⚪'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255,255,255,0.05)', paddingBottom: '6px', gap: '10px' }}>
-              <span style={{ color: 'var(--text-dim)' }}>GOOGLE DRIVE STORAGE ACCESS:</span>
-              <span style={{ color: healthData?.driveStatus?.includes('🟢') ? 'var(--neon-green)' : 'inherit', fontWeight: 'bold' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: isMobile ? '10px' : '12px', background: 'var(--bg-dark)', borderRadius: '10px', border: '1px solid var(--border-dim)', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? '8px' : '0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                <svg width={isMobile ? '14' : '16'} height={isMobile ? '14' : '16'} viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span style={{ fontSize: isMobile ? '10px' : '11px', color: 'var(--text-dim)', fontWeight: '700', whiteSpace: 'nowrap' }}>DRIVE ACCESS</span>
+              </div>
+              <span style={{ fontSize: isMobile ? '11px' : '12px', color: healthData?.driveStatus?.includes('🟢') ? 'var(--neon-green)' : 'var(--text-main)', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                 {healthData ? healthData.driveStatus : 'UNCHECKED ⚪'}
               </span>
             </div>
-            {healthData && (
-              <div style={{ fontSize: '10px', color: 'var(--text-dim)', textAlign: 'right', marginTop: '4px' }}>
-                TIMESTAMP SCAN: {healthData.timestamp} WIB
+
+            <div style={{ textAlign: 'center', marginTop: isMobile ? '8px' : '10px' }}>
+              {healthData && (
+                <span style={{ fontSize: isMobile ? '10px' : '11px', color: 'var(--text-dim)', background: 'var(--bg-dark)', padding: isMobile ? '4px 8px' : '6px 12px', borderRadius: '6px', border: '1px dashed var(--border-dim)', display: 'inline-block' }}>
+                  SCAN: {healthData.timestamp} WIB
+                </span>
+              )}
+            </div>
+            {diagnosisLog && (
+              <div style={{ marginTop: isMobile ? '12px' : '14px', padding: isMobile ? '14px' : '18px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '14px', color: 'var(--text-main)', textAlign: 'left', boxShadow: '0 10px 24px rgba(59, 130, 246, 0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: isMobile ? '12px' : '13px', fontWeight: '800', marginBottom: '8px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '999px', background: '#2563eb', display: 'inline-block' }}></span>
+                  Riwayat Diagnosis Terakhir
+                </div>
+                <div style={{ fontSize: isMobile ? '12px' : '13px', lineHeight: '1.6', color: 'var(--text-dim)' }}>
+                  <div style={{ marginBottom: '6px' }}><strong>{diagnosisLog.action}</strong></div>
+                  <div>oleh <strong>{diagnosisLog.actor}</strong></div>
+                  <div>Pada {diagnosisLog.date}</div>
+                </div>
               </div>
             )}
+
           </div>
           
           <button 
             type="button" 
             onClick={handleCheckHealth}
             disabled={healthLoading}
-            className="tech-btn-action" 
-            style={{ 
-              background: isEngineActive ? 'var(--neon-yellow)' : 'rgba(255, 215, 0, 0.01)',
-              border: '1px solid var(--neon-yellow)', 
-              color: isEngineActive ? 'var(--bg-dark)' : 'var(--neon-yellow)', 
-              fontWeight: isEngineActive ? 'bold' : 'normal',
-              fontSize: '11px', 
-              fontFamily: 'var(--font-tech)',
-              padding: '12px',
-              width: '100%',
-              boxShadow: isEngineActive ? '0 0 15px rgba(255, 215, 0, 0.4)' : 'none',
-              transition: 'all 0.25s ease'
+            className={`submit-button ${healthLoading ? 'loading' : ''}`}
+            style={{
+              marginTop: isMobile ? '20px' : '24px',
+              padding: isMobile ? '16px' : '18px',
+              minHeight: isMobile ? '52px' : '56px',
+              fontSize: isMobile ? '12px' : '13px',
+              background: 'transparent',
+              color: 'var(--neon-cyan)',
+              border: '1px solid var(--neon-cyan)',
+              boxShadow: 'none'
             }}
           >
-            {healthLoading ? 'SCANNING SECURE SOCKET LINE...' : '[ JALANKAN DIAGNOSIS SISTEM SEKARANG ]'}
+            {healthLoading ? 'SCANNING...' : 'JALANKAN DIAGNOSIS'}
           </button>
         </div>
-      </div>
+      </div>)}
 
-      {/* RIWAYAT INFRASTRUKTUR SISTEM (DATABASE SYNC) */}
-      <div>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '16px', gap: isMobile ? '12px' : '0px' }}>
-          <div className="section-heading admin-heading" style={{ margin: 0, fontSize: isMobile ? '12px' : '14px' }}>
-            <span>📜</span> RIWAYAT SISTEM (DATABASE SYNC)
+      {/* PENGATURAN TAUTAN DATABASE */}
+      {activeTab === 'database' && (
+      <div style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+        <div className="active-form-section admin-section-card" style={{ margin: 0, padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '24px' }}>
+          
+          {/* Status Box Modern */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', padding: isMobile ? '16px' : '20px', borderRadius: '16px', background: spreadsheetId ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)', border: `1px solid ${spreadsheetId ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`, textAlign: 'left', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start' }}>
+              <span className="admin-status-dot active" style={{ background: spreadsheetId ? '#3b82f6' : 'var(--neon-green)', boxShadow: `0 0 10px ${spreadsheetId ? '#3b82f6' : 'var(--neon-green)'}` }}></span>
+              <span style={{ fontSize: isMobile ? '11px' : '12px', fontWeight: 'bold', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status Database</span>
+            </div>
+            <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800', color: spreadsheetId ? '#3b82f6' : 'var(--neon-green)', letterSpacing: '-0.5px' }}>
+              {spreadsheetId ? 'KUSTOM SERVER AKTIF' : 'DEFAULT SERVER AKTIF'}
+            </div>
+            {migrationLogs.find(log => log.action.includes('TAUTAN') || log.action.includes('DATABASE') || log.action.includes('DEFAULT')) && (
+              <div style={{ marginTop: '4px', fontSize: isMobile ? '11px' : '12px', color: 'var(--text-dim)', fontFamily: 'var(--font-tech)', width: '100%' }}>
+                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                  Terakhir diubah oleh: <strong style={{ color: 'var(--text-main)' }}>{migrationLogs.find(log => log.action.includes('TAUTAN') || log.action.includes('DATABASE') || log.action.includes('DEFAULT')).actor}</strong>
+                </div>
+                <div style={{ marginTop: '2px' }}>Pada {migrationLogs.find(log => log.action.includes('TAUTAN') || log.action.includes('DATABASE') || log.action.includes('DEFAULT')).date}</div>
+              </div>
+            )}
           </div>
-          {migrationLogs.length > 0 && (
+
+          {/* Collapsible Details Section */}
+          <div style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-dim)', borderRadius: '16px', overflow: 'hidden' }}>
             <button
-              onClick={() => onDeleteMigrationLog('all')}
-              style={{ background: 'rgba(255, 0, 60, 0.03)', border: '1px solid rgba(255, 0, 60, 0.3)', color: 'rgba(255, 30, 80, 0.9)', fontSize: '10px', cursor: 'pointer', fontFamily: 'var(--font-tech)', padding: isMobile ? '6px 12px' : '2px 8px', borderRadius: '4px', width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
+              type="button"
+              onClick={() => setIsDetailsOpen(!isDetailsOpen)}
+              style={{
+                width: '100%',
+                padding: isMobile ? '14px' : '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--bg-panel)',
+                border: 'none',
+                borderBottom: isDetailsOpen ? '1px solid var(--border-dim)' : 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-tech)',
+                fontWeight: '700',
+                fontSize: isMobile ? '12px' : '13px',
+                color: 'var(--text-main)'
+              }}
             >
-              [ 🔥 RESET / HAPUS ALL LOGS ]
+              <span>DETAIL ID TERHUBUNG</span>
+              <span style={{ transform: isDetailsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>▼</span>
+            </button>
+            {isDetailsOpen && (
+              <div style={{ padding: isMobile ? '16px' : '20px', display: 'flex', flexDirection: 'column', gap: isMobile ? '12px' : '16px', animation: 'slideDown 0.3s ease-out' }}>
+                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '4px' : '0' }}>
+                  <span style={{ fontSize: isMobile ? '11px' : '12px', color: 'var(--text-dim)', fontWeight: '700', letterSpacing: '0.5px' }}>SPREADSHEET ID</span>
+                  {spreadsheetId ? (
+                    <a href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}`} target="_blank" rel="noreferrer" style={{ fontSize: isMobile ? '13px' : '14px', color: 'var(--text-main)', textDecoration: 'none', fontWeight: '800', fontFamily: 'var(--font-tech)' }}>
+                      {spreadsheetId.slice(0, 8)}...{spreadsheetId.slice(-4)} ↗
+                    </a>
+                  ) : <span style={{ fontSize: isMobile ? '13px' : '14px', color: 'var(--text-main)', fontWeight: '800', fontFamily: 'var(--font-tech)' }}>DEFAULT_DB</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '4px' : '0' }}>
+                  <span style={{ fontSize: isMobile ? '11px' : '12px', color: 'var(--text-dim)', fontWeight: '700', letterSpacing: '0.5px' }}>FOLDER DRIVE ID</span>
+                  {folderId ? (
+                    <a href={`https://drive.google.com/drive/folders/${folderId}`} target="_blank" rel="noreferrer" style={{ fontSize: isMobile ? '13px' : '14px', color: 'var(--text-main)', textDecoration: 'none', fontWeight: '800', fontFamily: 'var(--font-tech)' }}>
+                      {folderId.slice(0, 8)}...{folderId.slice(-4)} ↗
+                    </a>
+                  ) : <span style={{ fontSize: isMobile ? '13px' : '14px', color: 'var(--text-main)', fontWeight: '800', fontFamily: 'var(--font-tech)' }}>DEFAULT_DIR</span>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input Form modern */}
+          <form onSubmit={handleSystemSetup} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input
+              type="url"
+              placeholder={isMobile ? "Paste Drive folder URL..." : "https://drive.google.com/drive/folders/..."}
+              className="form-input"
+              style={{ 
+                fontSize: isMobile ? '13px' : '14px', 
+                padding: isMobile ? '16px' : '18px', 
+                borderRadius: '14px',
+                border: '2px solid var(--border-dim)',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+              }}
+              value={driveUrlInput}
+              onChange={(e) => setDriveUrlInput(e.target.value)}
+              disabled={setupLoading}
+              required
+            />
+            <button 
+              type="submit" 
+              disabled={setupLoading} 
+              className={`submit-button ${setupLoading ? 'loading' : ''}`} 
+              style={{ 
+                padding: isMobile ? '16px' : '18px', 
+                minHeight: isMobile ? '54px' : '60px', 
+                fontSize: isMobile ? '13px' : '14px',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)'
+              }}
+            >
+              {setupLoading ? 'MEMPROSES TAUTAN...' : 'PERBARUI TAUTAN GOOGLE DRIVE'}
+            </button>
+          </form>
+
+          {/* Reset Button (If active) */}
+          {spreadsheetId && (
+            <button 
+              type="button"
+              onClick={handleResetToDefault} 
+              disabled={setupLoading}
+              className="premium-btn-danger"
+              style={{ width: '100%', borderRadius: '14px', padding: isMobile ? '16px' : '18px', fontSize: isMobile ? '13px' : '14px' }}
+            >
+              ⚠ KEMBALI KE DATABASE UTAMA (RESET)
             </button>
           )}
         </div>
-
-        <div className="global-section" style={{ borderColor: 'var(--neon-yellow)', boxShadow: 'inset 0 0 20px rgba(255, 215, 0, 0.03)', margin: 0, padding: isMobile ? '12px' : '20px' }}>
-          {migrationLogs.length === 0 ? (
-            <div className="empty-draft" style={{ borderColor: 'rgba(255, 215, 0, 0.2)', color: 'var(--neon-yellow)', fontSize: '11px' }}>
-              [ BELUM ADA RIWAYAT PERUBAHAN DATABASE DI SPREADSHEET ]
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '250px', overflowY: 'auto', paddingRight: '6px' }} className="draft-list-section">
-              {migrationLogs.map((log, index) => (
-                <div key={index} style={{ padding: isMobile ? '12px' : '16px', background: 'var(--bg-dark)', border: '1px solid rgba(255, 215, 0, 0.15)', borderRadius: '8px', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
-                    <span style={{ color: 'var(--neon-yellow)', fontWeight: 'bold', fontFamily: 'var(--font-tech)', fontSize: '12px', letterSpacing: '1px' }}>
-                      {log.action}
-                    </span>
-                    {log.details && (
-                      <span style={{ color: 'var(--text-main)', fontSize: '11px', fontFamily: 'sans-serif', marginTop: '4px', display: 'block', opacity: 0.85 }}>
-                        {log.details}
-                      </span>
-                    )}
-                    <span style={{ color: 'var(--text-dim)', fontSize: '10px', fontFamily: 'var(--font-tech)', marginTop: '4px' }}>
-                      {log.date}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', color: 'var(--text-main)', fontFamily: 'var(--font-tech)' }}>
-                    <span style={{ background: 'rgba(255, 215, 0, 0.05)', padding: '2px 6px', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '4px', color: 'var(--neon-yellow)', fontSize: '9px' }}>
-                      EKSEKUTOR
-                    </span>
-                    <span style={{ letterSpacing: '0.5px', fontSize: '10px', wordBreak: 'break-all' }}>{log.actor}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      </div>)}
 
     </div>
   );

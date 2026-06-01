@@ -1,9 +1,11 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿﻿﻿﻿import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import './App.css';
 
 import logoLmb from './assets/Logo LMB.jpg';
+import logoMedfo from './assets/medfo.png';
+import spinnerLoading from './assets/spinner loading.png';
 import { CACHE_KEYS, cache } from './utils/cache';
 import { REGEX } from './utils/regex';
 import { HISTORY_CACHE_TTL, ADMIN_SECRET } from './utils/constants';
@@ -11,11 +13,22 @@ import { extractFolderId, getMonthOptions } from './utils/helpers';
 
 import AuthScreen from './features/auth/AuthScreen';
 import RoleSelection from './features/role/RoleSelection';
-import ProfileSetup from './features/profile/ProfileSetup';
 import AdminDashboard from './features/admin/AdminDashboard';
 import StaffDashboard from './features/report/StaffDashboard';
 import Modal from './features/ui/Modal';
 import ImagePreviewOverlay from './features/ui/ImagePreviewOverlay';
+
+const base64ToFile = (base64, filename) => {
+  const arr = base64.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -42,6 +55,7 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState(null); 
   const [isAppInitialized, setIsAppInitialized] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // --- STATE INFRASTRUKTUR / DATABASE ---
   const [folderId, setFolderId] = useState(localStorage.getItem('medfo_folder_id') || '');
@@ -61,11 +75,14 @@ function App() {
   const [adminPin, setAdminPin] = useState('');
   const [adminError, setAdminError] = useState('');
   const [isAdminVerifying, setIsAdminVerifying] = useState(false);
+  const [showLogoutPrompt, setShowLogoutPrompt] = useState(false);
 
   const [penanggungJawab, setPenanggungJawab] = useState('');
-  const [isNameSet, setIsNameSet] = useState(false);
-  const [tempName, setTempName] = useState('');
-  const [nameError, setNameError] = useState('');
+
+  const handlePenanggungChange = (value) => {
+    setPenanggungJawab(value);
+    try { cache.set(CACHE_KEYS.staffName, value); } catch (e) { /* ignore */ }
+  };
 
   const [openDropdown, setOpenDropdown] = useState(null);
   const [bulanOptions, setBulanOptions] = useState([]);
@@ -222,13 +239,11 @@ function App() {
     if (savedRole) {
       setUserRole(savedRole);
       if (savedRole === 'admin') {
-        setPenanggungJawab('ADMIN MEDFO');
-        setIsNameSet(true);
+        setPenanggungJawab('ADMIN UTAMA');
       } else {
         const savedName = cache.get(CACHE_KEYS.staffName);
         if (savedName) {
           setPenanggungJawab(savedName);
-          setIsNameSet(true);
         }
       }
     }
@@ -282,21 +297,50 @@ function App() {
     if (!savedFormState?.tanggal) setTanggal('');
   }, [selectedBulan, userRole]);
 
-  const handleLogin = async () => {
-    try { await signInWithPopup(auth, provider); }
+  const handleLogin = async (selectedRole) => {
+    setIsGoogleLoading(true);
+    try { 
+      const result = await signInWithPopup(auth, provider);
+      setUser(result.user); // Hindari jeda flicker dengan set manual
+      if (selectedRole === 'staff') {
+        const defaultName = result.user.displayName || result.user.email.split('@')[0];
+        const capitalized = defaultName.replace(/\b\w/g, l => l.toUpperCase());
+        cache.set(CACHE_KEYS.staffName, capitalized);
+        setPenanggungJawab(capitalized);
+        handleRoleSelect('staff');
+      } else if (selectedRole === 'admin') {
+        setShowAdminChallenge(true);
+      }
+    }
     catch (error) { if (error.code !== 'auth/popup-closed-by-user') alert("Gagal Login: " + error.message); }
+    finally { setIsGoogleLoading(false); }
   };
 
-  const handleLogout = async () => {
-    if (auth) await signOut(auth);
+  const handleLogoutClick = () => {
+    if (userRole === 'staff' && laporans.length > 0) {
+      showConfirm(
+        "PERINGATAN ANTREAN",
+        "Anda masih memiliki data laporan yang belum terkirim di dalam antrean. Jika Anda keluar, data ini akan hilang.\n\nYakin ingin melanjutkan keluar?",
+        () => setShowLogoutPrompt(true)
+      );
+    } else {
+      setShowLogoutPrompt(true);
+    }
+  };
+
+  const executeLogout = async (fullSignOut) => {
+    if (fullSignOut && auth) {
+      await signOut(auth);
+      setUser(null);
+    }
     cache.remove(CACHE_KEYS.userRole);
     cache.remove(CACHE_KEYS.staffName);
     cache.remove(CACHE_KEYS.formState);
     setUserRole(null);
-    setIsNameSet(false);
     setPenanggungJawab('');
     setShowAdminChallenge(false);
     setAdminPin('');
+    setShowLogoutPrompt(false);
   };
 
   // =========================================
@@ -311,12 +355,17 @@ function App() {
     e.preventDefault();
     if (!adminPin.trim()) return;
 
-    // MASTER KEY ADMIN 1: Selalu bisa masuk tanpa koneksi server
-    if (adminPin.trim().toUpperCase() === ADMIN_SECRET) {
+    const setAdminAccess = () => {
+      if (!user) setUser({ email: 'admin@sistem.lokal', displayName: 'Admin Utama' });
       setAdminError('');
       handleRoleSelect('admin');
-      setPenanggungJawab('ADMIN MEDFO');
-      setIsNameSet(true);
+      const adminName = user?.displayName ? user.displayName.toUpperCase() : 'ADMIN UTAMA';
+      setPenanggungJawab(adminName);
+    };
+
+    // MASTER KEY ADMIN 1: Selalu bisa masuk tanpa koneksi server
+    if (adminPin.trim().toUpperCase() === ADMIN_SECRET) {
+      setAdminAccess();
       return;
     }
 
@@ -335,10 +384,7 @@ function App() {
       const result = await response.json();
 
       if (result.status === 'success') {
-        setAdminError('');
-        handleRoleSelect('admin');
-        setPenanggungJawab('ADMIN MEDFO');
-        setIsNameSet(true);
+        setAdminAccess();
       } else {
         setAdminError(result.message || 'Passcode Tidak Valid!');
         setAdminPin('');
@@ -348,18 +394,6 @@ function App() {
     } finally {
       setIsAdminVerifying(false);
     }
-  };
-
-  const handleSaveName = () => {
-    const finalName = tempName.trim();
-    if (!finalName) return showAlert("AKSES DITOLAK", "Parameter Nama tidak boleh kosong!", "error");
-    if (!REGEX.staffName.test(finalName)) {
-      return showAlert("ANOMALI TERDETEKSI", "Parameter Nama mengandung karakter ilegal.\nGunakan abjad standar untuk identitas operasional!", "error");
-    }
-    const capitalized = finalName.replace(/\b\w/g, l => l.toUpperCase());
-    cache.set(CACHE_KEYS.staffName, capitalized);
-    setPenanggungJawab(capitalized); 
-    setIsNameSet(true);
   };
 
   // Hanya Staf yang perlu menarik history untuk form validasi hariannya
@@ -391,8 +425,8 @@ function App() {
 
   useEffect(() => {
     // Admin tidak perlu menarik history UKM lagi, cukup Staf
-    if (user && userRole === 'staff' && isNameSet) fetchHistory();
-  }, [user, userRole, isNameSet, fetchHistory]);
+    if (user && userRole === 'staff') fetchHistory();
+  }, [user, userRole, fetchHistory]);
 
   // Jika Admin, tarik seluruh history untuk kebutuhan manajemen
   useEffect(() => {
@@ -424,7 +458,7 @@ function App() {
 
   const isTanggalLocked = !completedSteps.bulan;
   const isEntriLocked   = !completedSteps.tanggal;
-  const isAntreanLocked = !completedSteps.tanggal;
+  const isAntreanLocked = !completedSteps.tanggal && laporans.length === 0;
 
   const handleUkmChange = (e) => {
     let value = e.target.value;
@@ -432,19 +466,42 @@ function App() {
       showAlert("INPUT TIDAK VALID", "Sistem mendeteksi tanda koma (,). Masukkan 1 nama UKM per entri.", "error");
       value = value.replace(/,/g, '');
     }
-    setCurrentUkm(value);
-    if (value.trim() !== '') {
-      if (!REGEX.ukmPrefix.test(value.trim())) setUkmError('Format salah: Wajib diawali kata "UKM" (Cth: UKM Tari)');
-      else if (REGEX.ukmLowerCase.test(value)) setUkmError('Format salah: Gunakan Huruf Kapital di setiap awal kata');
-      else setUkmError('');
-    } else { setUkmError(''); }
-  };
 
-  const handleTempNameChange = (e) => {
-    const sanitized = e.target.value.replace(/[^a-zA-Z\s'-]/g, '');
-    setTempName(sanitized);
-    if (sanitized && !REGEX.staffName.test(sanitized)) setNameError('Hanya huruf, spasi, apostrof (\'), dan tanda hubung (-)');
-    else setNameError('');
+    // AUTO-CORRECTION: Kapitalisasi Otomatis
+    let words = value.split(' ');
+    if (words[0] && words[0].toLowerCase() === 'ukm') {
+      words[0] = 'UKM'; // Paksa kata pertama jadi UKM
+    }
+    words = words.map((word, index) => {
+      if (index === 0 && word === 'UKM') return word;
+      if (word.length > 0) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return word;
+    });
+    value = words.join(' ');
+
+    setCurrentUkm(value);
+    
+    if (value !== '') {
+      if (!value.startsWith('UKM')) {
+        setUkmError('Format salah: Wajib diawali persis dengan kata "UKM" (Kapital)');
+      } else if (!/^UKM\s/.test(value)) {
+        setUkmError('Format salah: Tambahkan spasi setelah kata "UKM" (Cth: UKM Tari)');
+      } else if (value.trim().length <= 4) {
+        setUkmError('Nama spesifik UKM tidak boleh kosong');
+      } else {
+        const words = value.trim().split(' ');
+        const hasLowerCaseStart = words.slice(1).some(word => word.length > 0 && !/^[A-Z0-9]/.test(word));
+        if (hasLowerCaseStart) {
+          setUkmError('Format salah: Awalan setiap kata wajib menggunakan Huruf Kapital');
+        } else {
+          setUkmError(''); // Valid!
+        }
+      }
+    } else {
+      setUkmError('');
+    }
   };
 
   const handleFileChange = (event) => {
@@ -483,7 +540,8 @@ function App() {
   };
 
   const addToDraft = async () => {
-    if (ukmError) return showAlert("KESALAHAN FORMAT", "Selesaikan peringatan format Nama UKM sebelum melanjutkan.\n" + ukmError, "error");
+    if (!penanggungJawab || !penanggungJawab.trim()) return showAlert("DATA TIDAK LENGKAP", "Nama Pengirim wajib diisi sebelum menyimpan atau mengunggah.", "error");
+    if (ukmError) return showAlert("KESALAHAN FORMAT", "Selesaikan peringatan Nama UKM sebelum melanjutkan.\n" + ukmError, "error");
     if (!currentUkm.trim()) return showAlert("DATA TIDAK LENGKAP", "Parameter [Nama UKM] berstatus kosong!", "error");
     if (currentFotos.length === 0) return showAlert("DATA TIDAK LENGKAP", "Sistem membutuhkan minimal 1 file gambar bukti dokumentasi!", "error");
 
@@ -496,7 +554,7 @@ function App() {
         const fullBase64Data = await compressImage(f);
         return { name: f.name, data: fullBase64Data };
       }));
-      setLaporans(prev => [...prev, { id: Date.now(), namaUkm: currentUkm, fotos: processedFotos }]);
+      setLaporans(prev => [...prev, { id: Date.now(), namaUkm: currentUkm, fotos: processedFotos, penanggungJawab }]);
       setCurrentUkm(''); setCurrentFotos([]); setUkmError('');
     } catch (e) {
       showAlert("GAGAL MEMPROSES", "Sistem gagal memproses data gambar.", "error");
@@ -504,6 +562,26 @@ function App() {
   };
 
   const removeDraft = (id) => setLaporans(laporans.filter(l => l.id !== id));
+
+  const handleEditDraft = (id, onSuccess) => {
+    const performEdit = () => {
+      const draftToEdit = laporans.find(l => l.id === id);
+      if (!draftToEdit) return;
+      const files = draftToEdit.fotos.map(f => base64ToFile(f.data, f.name));
+      setCurrentUkm(draftToEdit.namaUkm);
+      if (draftToEdit.penanggungJawab) setPenanggungJawab(draftToEdit.penanggungJawab);
+      setCurrentFotos(files);
+      setUkmError('');
+      setLaporans(prev => prev.filter(l => l.id !== id));
+      if (onSuccess) onSuccess();
+    };
+
+    if (currentUkm || currentFotos.length > 0) {
+      showConfirm("TIMPA FORMULIR?", "Ada data yang belum selesai diisi di formulir. Yakin ingin membuang isian tersebut dan mengedit data dari antrean?", performEdit);
+    } else {
+      performEdit();
+    }
+  };
 
   const executeSubmission = async (finalLaporanList) => {
     setIsLoading(true);
@@ -524,7 +602,7 @@ function App() {
         setUploadProgress(prev => ({ ...prev, [item.id]: 60 }));
         const payload = { 
           action: 'submitReport', 
-          penanggungJawab, 
+          penanggungJawab: item.penanggungJawab || penanggungJawab,
           tanggal, 
           laporanList: [{ namaUkm: item.namaUkm, files: processedFotos }], 
           userEmail: user?.email || "Unknown",
@@ -582,6 +660,9 @@ function App() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!tanggal) return showAlert("DATA TIDAK LENGKAP", "Parameter [Tanggal Laporan] wajib didefinisikan!", "error");
+    if (currentFotos.length > 0 && (!penanggungJawab || !penanggungJawab.trim())) {
+      return showAlert("DATA TIDAK LENGKAP", "Nama Pengirim wajib diisi sebelum unggah.", "error");
+    }
     if (currentUkm || currentFotos.length > 0) {
       if (ukmError) return showAlert("KESALAHAN FORMAT", "Mohon perbaiki format Nama UKM.", "error");
       showConfirm("PAKET BELUM DISIMPAN", "Ada data di memori sementara yang belum masuk antrean.\nLakukan Simpan & Kirim Semua?", () => {
@@ -590,7 +671,7 @@ function App() {
           const fullBase64Data = await compressImage(f);
           return { name: f.name, data: fullBase64Data };
         })).then((processedFotos) => {
-          const finalLaporans = [...laporans, { id: Date.now(), namaUkm: currentUkm || "Data Tanpa Nama", fotos: processedFotos }];
+          const finalLaporans = [...laporans, { id: Date.now(), namaUkm: currentUkm, fotos: processedFotos, penanggungJawab }];
           setCurrentUkm(''); setCurrentFotos([]); setLaporans(finalLaporans);
           setTimeout(() => { processSubmission(finalLaporans); }, 400);
         });
@@ -650,20 +731,16 @@ function App() {
   }
 
   // =========================================
-  // RENDER: LAYAR 1 - LOGIN GOOGLE
+  // RENDER: LAYAR 1 & 2 - AUTHENTICATION & ROLE SELECTION
   // =========================================
-  if (!user && auth) {
-    return <AuthScreen logoLmb={logoLmb} onLogin={handleLogin} />;
-  }
-
-  // =========================================
-  // RENDER: LAYAR 2 - PILIH ROLE & PASSCODE ADMIN
-  // =========================================
-  if (user && !userRole) {
+  if (!user || (user && !userRole)) {
     return (
-      <RoleSelection
+      <AuthScreen
         user={user}
         logoLmb={logoLmb}
+        spinnerLoading={spinnerLoading}
+        isGoogleLoading={isGoogleLoading}
+        onLogin={handleLogin}
         showAdminChallenge={showAdminChallenge}
         onShowAdminChallenge={() => setShowAdminChallenge(true)}
         onRoleSelect={handleRoleSelect}
@@ -673,22 +750,7 @@ function App() {
         isAdminVerifying={isAdminVerifying}
         onAdminVerify={handleAdminVerify}
         onCancelAdminChallenge={() => { setShowAdminChallenge(false); setAdminError(''); }}
-      />
-    );
-  }
-
-  // =========================================
-  // RENDER: LAYAR 3 - PROFIL (HANYA STAF)
-  // =========================================
-  if (user && userRole === 'staff' && !isNameSet) {
-    return (
-      <ProfileSetup
-        user={user}
-        logoLmb={logoLmb}
-        tempName={tempName}
-        onTempNameChange={handleTempNameChange}
-        nameError={nameError}
-        onSaveName={handleSaveName}
+        onLogout={handleLogoutClick}
       />
     );
   }
@@ -708,26 +770,24 @@ function App() {
   // RENDER: LAYAR 4 - DASHBOARD ADMIN / STAF
   // =========================================
   return (
-    <div className="app-wrapper tech-bg">
-      <div className={`form-card ${userRole === 'admin' ? 'admin-card' : ''}`}>
+    <div className="app-wrapper">
+      <div className="form-card">
         
         {/* HEADER USER */}
         <div className="user-header">
           <div className="user-info">
-            <div className={`user-avatar ${userRole === 'admin' ? 'admin' : ''}`}>
-              {userRole === 'admin' ? '👑' : <img src={user.photoURL || 'https://via.placeholder.com/42'} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />}
+            <div className="user-avatar">
+              <img src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(penanggungJawab || 'A')}&background=f3e8ff&color=7e22ce`} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
             </div>
             <div className="user-text">
-              <span className={`user-name ${userRole === 'admin' ? 'admin' : ''}`}>{penanggungJawab}</span>
-              <span className="user-role-label">HAK AKSES: {userRole === 'admin' ? 'KOORDINATOR' : 'ENTRI DATA'}</span>
+              <span className="user-name">{penanggungJawab}</span>
+              <span className="user-role-label">{userRole === 'admin' ? 'HAK AKSES: KOORDINATOR' : 'HAK AKSES: ENTRI DATA'}</span>
             </div>
           </div>
-          <button onClick={handleLogout} className="btn-logout">[ KELUAR ]</button>
+          <button onClick={handleLogoutClick} className="btn-logout">[ KELUAR ]</button>
         </div>
 
-        <h2 className={`form-title ${userRole === 'admin' ? 'admin-title-text' : ''}`}>
-          {userRole === 'admin' ? 'DASHBOARD INFRASTRUKTUR' : 'FORMULIR PELAPORAN'}
-        </h2>
+        <h2 className="form-title">{userRole === 'admin' ? 'DASHBOARD ADMIN' : 'FORMULIR PELAPORAN'}</h2>
         {openDropdown && <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>}
 
         {userRole === 'admin' ? (
@@ -741,6 +801,9 @@ function App() {
             handleResetToDefault={handleResetToDefault}
             migrationLogs={migrationLogs}
             onDeleteMigrationLog={handleDeleteMigrationLog}
+            addMigrationLog={addMigrationLog}
+            showConfirm={showConfirm}
+            showAlert={showAlert}
           />
         ) : (
           <StaffDashboard
@@ -772,14 +835,43 @@ function App() {
             removeCurrentFoto={removeCurrentFoto}
             addToDraft={addToDraft}
             handleSubmit={handleSubmit}
+            handleEditDraft={handleEditDraft}
             removeDraft={(idToRemove) => {
               setLaporans((prev) => prev.filter(laporan => laporan.id !== idToRemove));
             }}
+            penanggungJawab={penanggungJawab}
+            setPenanggungJawab={handlePenanggungChange}
           />
         )}
       </div>
 
       <Modal modal={modal} />
+      {showLogoutPrompt && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon confirm">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </div>
+            <h3 className="modal-title">PILIHAN KELUAR</h3>
+            <p className="modal-message">Silakan pilih metode keluar sesi yang Anda inginkan:</p>
+            <div className="modal-actions" style={{ flexDirection: 'column', gap: '10px' }}>
+              <button onClick={() => executeLogout(true)} className="modal-btn primary" style={{ width: '100%', padding: '14px' }}>
+                KELUAR & GANTI AKUN GOOGLE
+              </button>
+              <button onClick={() => executeLogout(false)} className="modal-btn" style={{ width: '100%', padding: '14px', backgroundColor: '#f3e8ff', color: '#9333ea', fontWeight: 'bold' }}>
+                HANYA GANTI PERAN (TETAP LOGIN)
+              </button>
+              <button onClick={() => setShowLogoutPrompt(false)} className="modal-btn secondary" style={{ width: '100%', padding: '14px' }}>
+                BATAL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <ImagePreviewOverlay previewImage={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
