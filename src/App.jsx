@@ -5,7 +5,7 @@ import './App.css';
 
 import logoLmb from './assets/Logo LMB.jpg';
 import logoMedfo from './assets/medfo.png';
-import spinnerLoading from './assets/spinner loading.png';
+import spinnerLoading from './assets/Spinner Loading.png';
 import { CACHE_KEYS, cache } from './utils/cache';
 import { REGEX } from './utils/regex';
 import { HISTORY_CACHE_TTL, ADMIN_SECRET } from './utils/constants';
@@ -721,10 +721,14 @@ function App() {
   // =========================================
   if (isAuthLoading) {
     return (
-      <div className="tech-auth-container tech-bg">
-        <div style={{ color: 'var(--neon-cyan)', fontSize: '16px', fontFamily: 'var(--font-tech)', letterSpacing: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-          <span className="blink-dot" style={{ width: '12px', height: '12px' }}></span>
-          [ MEMUAT KONEKSI AMAN... ]
+      <div className="tech-auth-container tech-bg" style={{ backgroundColor: '#fff', backgroundImage: 'none' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <img
+            src={spinnerLoading}
+            alt="Loading spinner"
+            className="loading-spinner"
+            style={{ width: '120px', maxWidth: '80%', objectFit: 'contain' }}
+          />
         </div>
       </div>
     );
@@ -849,6 +853,12 @@ function App() {
       {showLogoutPrompt && (
         <div className="modal-overlay">
           <div className="modal-content">
+            <button onClick={() => setShowLogoutPrompt(false)} className="modal-close-btn" style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
             <div className="modal-icon confirm">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -864,9 +874,6 @@ function App() {
               </button>
               <button onClick={() => executeLogout(false)} className="modal-btn" style={{ width: '100%', padding: '14px', backgroundColor: '#f3e8ff', color: '#9333ea', fontWeight: 'bold' }}>
                 HANYA GANTI PERAN (TETAP LOGIN)
-              </button>
-              <button onClick={() => setShowLogoutPrompt(false)} className="modal-btn secondary" style={{ width: '100%', padding: '14px' }}>
-                BATAL
               </button>
             </div>
           </div>

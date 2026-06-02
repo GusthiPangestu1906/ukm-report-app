@@ -801,6 +801,10 @@ html, body, #root {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+.loading-spinner {
+  animation: spinLoading 1s linear infinite;
+}
+
 .minimal-spinner-icon {
   width: 24px;
   height: 24px;
