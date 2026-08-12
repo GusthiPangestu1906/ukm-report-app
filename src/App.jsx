@@ -1,10 +1,10 @@
-﻿﻿﻿﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿﻿﻿import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import './App.css';
 
 import logoLmb from './assets/Logo LMB.jpg';
-import logoMedfo from './assets/medfo.png';
+import logoMedfo from './assets/Medfo.png';
 import spinnerLoading from './assets/Spinner Loading.png';
 import { CACHE_KEYS, cache } from './utils/cache';
 import { REGEX } from './utils/regex';

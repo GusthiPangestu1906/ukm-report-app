@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import spinnerLoading from '../../assets/spinner loading.png';
+import spinnerLoading from '../../assets/Spinner Loading.png';
 
 export default function StaffDashboard({
   openDropdown,
