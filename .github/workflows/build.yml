@@ -37,11 +37,8 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_UKMREPORT_APP_PROJECT != '' }}
-        with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_UKMREPORT_APP_PROJECT }}'
-          channelId: live
-          projectId: ukmreport-app-project
+        if: ${{ secrets.FIREBASE_TOKEN != '' }}
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: npx firebase-tools deploy --only hosting --token "$FIREBASE_TOKEN"
 
