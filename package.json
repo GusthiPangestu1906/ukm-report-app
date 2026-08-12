@@ -8,8 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "build:firebase": "vite build",
+    "deploy:firebase": "npm run build && firebase deploy --only hosting"
   },
   "dependencies": {
     "firebase": "^12.12.1",

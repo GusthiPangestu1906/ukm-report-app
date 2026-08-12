@@ -61,18 +61,16 @@ export default function StaffDashboard({
   return (
     <>
       {/* TAB NAVIGATION */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: 'var(--bg-dark)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-dim)' }}>
+      <div className="staff-tabs-wrapper">
         <button 
           onClick={() => setActiveTab('form')}
-          className="tab-button-custom"
-          style={{ flex: 1, padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', border: 'none', transition: '0.2s', backgroundColor: activeTab === 'form' ? '#ffffff' : 'transparent', color: activeTab === 'form' ? 'var(--neon-cyan)' : 'var(--text-dim)', boxShadow: activeTab === 'form' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', fontFamily: 'var(--font-tech)', fontSize: '13px', whiteSpace: 'nowrap' }}
+          className={`staff-tab-button ${activeTab === 'form' ? 'active' : ''}`}
         >
           📝 <span className="hide-on-mobile">FORMULIR </span>INPUT
         </button>
         <button 
           onClick={() => setActiveTab('queue')}
-          className="tab-button-custom"
-          style={{ flex: 1, padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', border: 'none', transition: '0.2s', backgroundColor: activeTab === 'queue' ? '#ffffff' : 'transparent', color: activeTab === 'queue' ? 'var(--neon-cyan)' : 'var(--text-dim)', boxShadow: activeTab === 'queue' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', fontFamily: 'var(--font-tech)', fontSize: '13px', whiteSpace: 'nowrap' }}
+          className={`staff-tab-button ${activeTab === 'queue' ? 'active' : ''}`}
         >
           🚀 ANTREAN<span className="hide-on-mobile"> PENGIRIMAN</span> {laporans.length > 0 && <span className="queue-badge-cool">{laporans.length}</span>}
         </button>
@@ -86,14 +84,14 @@ export default function StaffDashboard({
       </div>
       
       {!isEditingTime && tanggal ? (
-        <div className="active-form-section" style={{ padding: '16px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-tech)' }}>WAKTU PELAPORAN AKTIF:</span>
-            <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--neon-cyan)', fontFamily: 'var(--font-tech)' }}>
+        <div className="settings-active-banner">
+          <div className="settings-info-text">
+            <span className="settings-label-small">WAKTU PELAPORAN AKTIF:</span>
+            <span className="settings-value-highlight">
               {availableDates.find(d => d.value === tanggal)?.label || tanggal}
             </span>
           </div>
-          <button type="button" onClick={() => setIsEditingTime(true)} style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-dim)', color: 'var(--neon-cyan)', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', fontFamily: 'var(--font-tech)', fontSize: '12px', fontWeight: 'bold', transition: '0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <button type="button" onClick={() => setIsEditingTime(true)} className="btn-change-settings">
             UBAH
           </button>
         </div>
@@ -206,7 +204,7 @@ export default function StaffDashboard({
       <div className="active-form-section" style={{ opacity: isEntriLocked ? 0.35 : 1, pointerEvents: isEntriLocked ? 'none' : 'auto', transition: '0.3s', filter: isEntriLocked ? 'grayscale(0.5)' : 'none' }}>
         <div className="input-group">
           <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Nama UKM:</label>
-          <div style={{ position: 'relative', width: '100%' }}>
+          <div className="ukm-input-container">
             <input
               type="text"
               value={currentUkm}
@@ -222,11 +220,7 @@ export default function StaffDashboard({
               }}
             />
             {currentUkm && (
-              <span style={{
-                position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
-                color: ukmError ? 'var(--neon-red)' : 'var(--neon-green)'
-              }}>
+              <span className={`ukm-validation-icon ${ukmError ? 'error' : 'success'}`}>
                 {ukmError ? (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -331,12 +325,12 @@ export default function StaffDashboard({
               return (
                 <div className={`draft-item ${isProcessing ? 'processing' : ''}`} key={laporan.id}>
                       <div className="draft-item-header">
-                        <div className="draft-title-wrapper" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px', width: '100%' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', overflow: 'hidden' }}>
+                        <div className="draft-title-container">
+                          <div className="draft-title-main">
                             <span className="draft-number">#{index + 1}</span>
                             <span className="draft-title">{laporan.namaUkm}</span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-tech)' }}>
+                          <div className="draft-item-info-row">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                             {tanggal ? (availableDates.find(d => d.value === tanggal)?.label || tanggal) : 'Menunggu Tanggal'}
                           </div>

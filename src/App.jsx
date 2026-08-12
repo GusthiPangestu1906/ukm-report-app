@@ -18,26 +18,16 @@ import StaffDashboard from './features/report/StaffDashboard';
 import Modal from './features/ui/Modal';
 import ImagePreviewOverlay from './features/ui/ImagePreviewOverlay';
 
-const base64ToFile = (base64, filename) => {
-  const arr = base64.split(',');
-  const mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
-};
+
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: "medfo-auth-85df1.firebaseapp.com",
-  projectId: "medfo-auth-85df1",
-  storageBucket: "medfo-auth-85df1.firebasestorage.app",
-  messagingSenderId: "724707856698",
-  appId: "1:724707856698:web:a5ca85e03aafe6e3bcc003",
-  measurementId: "G-2PB43Y8XXG"
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 let app, auth, provider;
@@ -118,10 +108,7 @@ function App() {
   // =========================================
   // FUNGSI AUTO-MIGRASI PROTOKOL & LOGGING
   // =========================================
-  const extractFolderId = (url) => {
-    const match = url.match(/\/folders\/([a-zA-Z0-9-_]+)/);
-    return match ? match[1] : null;
-  };
+
 
   const addMigrationLog = (actionName) => {
     const newLog = {
