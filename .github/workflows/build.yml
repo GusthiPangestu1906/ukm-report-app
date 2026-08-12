@@ -37,8 +37,12 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
-        if: ${{ secrets.FIREBASE_TOKEN != '' }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: npx firebase-tools deploy --only hosting --token "$FIREBASE_TOKEN"
+        run: |
+          if [ -n "$FIREBASE_TOKEN" ]; then
+            npx firebase-tools deploy --only hosting --token "$FIREBASE_TOKEN"
+          else
+            echo "FIREBASE_TOKEN secret is not set. Skipping deployment step."
+          fi
 
