@@ -60,7 +60,7 @@ export default function StaffDashboard({
 
   return (
     <>
-      {/* TAB NAVIGATION */}
+      {/* TAB NAVIGATION (2-SEGMENT SWITCH) */}
       <div className="staff-tabs-wrapper">
         <button 
           onClick={() => setActiveTab('form')}
@@ -74,24 +74,16 @@ export default function StaffDashboard({
         >
           🚀 ANTREAN<span className="hide-on-mobile"> PENGIRIMAN</span> {laporans.length > 0 && <span className="queue-badge-cool">{laporans.length}</span>}
         </button>
-        {publicSpreadsheetUrl && (
-          <a
-            href={publicSpreadsheetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="staff-tab-button"
-            style={{ textDecoration: 'none' }}
-            title="Buka Spreadsheet Laporan"
-          >
-            📊 <span className="hide-on-mobile">FILE </span>SPREADSHEET
-          </a>
-        )}
       </div>
+
+
 
       {activeTab === 'form' && (
         <div style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
       <div className="section-heading">
-        <span className="step-number step-badge--done">1</span>
+        <span className={`step-number ${(!isEditingTime && tanggal) ? 'step-badge--done' : ''}`}>
+          {(!isEditingTime && tanggal) ? '✓' : '1'}
+        </span>
         PENGATURAN
       </div>
       

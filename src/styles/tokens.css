@@ -1,0 +1,49 @@
+:root {
+  /* Brand Palette (Medfo Fresh Palette) */
+  --color-primary: #d946ef;
+  --color-primary-hover: #c026d3;
+  --color-primary-dark: #9333ea;
+  --color-secondary: #4338ca;
+  --color-accent: #3b82f6;
+  --color-success: #10b981;
+  --color-success-dark: #059669;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Neutral Theme Tokens */
+  --color-bg-app: #1e1035;
+  --color-bg-card: rgba(255, 255, 255, 0.98);
+  --color-bg-section: #ffffff;
+  --color-bg-input: #f8fafc;
+  --color-bg-muted: #f1f5f9;
+
+  --color-text-main: #1e1b4b;
+  --color-text-muted: #64748b;
+  --color-text-light: #94a3b8;
+  --color-text-white: #ffffff;
+
+  --color-border-subtle: rgba(217, 70, 239, 0.15);
+  --color-border-default: #e2e8f0;
+  --color-border-focus: #d946ef;
+
+  /* Gradients */
+  --gradient-app: linear-gradient(135deg, #1e1035 0%, #3b0764 40%, #581c87 70%, #1e1b4b 100%);
+  --gradient-primary: linear-gradient(135deg, #d946ef 0%, #9333ea 50%, #4338ca 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-button: linear-gradient(135deg, #d946ef 0%, #9333ea 50%, #3b82f6 100%);
+
+  /* Typography */
+  --font-family-base: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
+  /* Shadows */
+  --shadow-card: 0 25px 60px -10px rgba(88, 28, 135, 0.35);
+  --shadow-button: 0 8px 24px rgba(217, 70, 239, 0.35);
+  --shadow-tab: 0 4px 14px rgba(217, 70, 239, 0.3);
+  --shadow-dropdown: 0 16px 40px rgba(15, 23, 42, 0.12);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+}
