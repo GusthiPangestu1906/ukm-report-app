@@ -32,7 +32,7 @@ export default function StaffDashboard({
   removeDraft,
   handleSubmit,
   handleEditDraft
-  , penanggungJawab, setPenanggungJawab
+  , penanggungJawab, setPenanggungJawab, publicSpreadsheetUrl
 }) {
   const [activeTab, setActiveTab] = useState('form');
   const [isEditingTime, setIsEditingTime] = useState(!tanggal);
@@ -74,6 +74,18 @@ export default function StaffDashboard({
         >
           🚀 ANTREAN<span className="hide-on-mobile"> PENGIRIMAN</span> {laporans.length > 0 && <span className="queue-badge-cool">{laporans.length}</span>}
         </button>
+        {publicSpreadsheetUrl && (
+          <a
+            href={publicSpreadsheetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="staff-tab-button"
+            style={{ textDecoration: 'none' }}
+            title="Buka Spreadsheet Laporan"
+          >
+            📊 <span className="hide-on-mobile">FILE </span>SPREADSHEET
+          </a>
+        )}
       </div>
 
       {activeTab === 'form' && (
