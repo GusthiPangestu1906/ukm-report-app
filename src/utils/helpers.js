@@ -30,3 +30,44 @@ export const getMonthOptions = () => {
   }
   return options;
 };
+
+export const getQuickMondayPresets = () => {
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+  const daysSinceMonday = currentDay === 0 ? 6 : currentDay - 1;
+  
+  const mondayThisWeek = new Date(now);
+  mondayThisWeek.setDate(now.getDate() - daysSinceMonday);
+  
+  const mondayLastWeek = new Date(mondayThisWeek);
+  mondayLastWeek.setDate(mondayThisWeek.getDate() - 7);
+
+  const formatDateVal = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const formatDateLabel = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${m}`;
+  };
+
+  return {
+    seninIni: {
+      value: formatDateVal(mondayThisWeek),
+      monthVal: `${mondayThisWeek.getFullYear()}-${String(mondayThisWeek.getMonth() + 1).padStart(2, '0')}`,
+      label: `Senin Ini (${formatDateLabel(mondayThisWeek)})`,
+      fullLabel: `Senin, ${formatDateLabel(mondayThisWeek)}/${mondayThisWeek.getFullYear()}`
+    },
+    seninLalu: {
+      value: formatDateVal(mondayLastWeek),
+      monthVal: `${mondayLastWeek.getFullYear()}-${String(mondayLastWeek.getMonth() + 1).padStart(2, '0')}`,
+      label: `Senin Lalu (${formatDateLabel(mondayLastWeek)})`,
+      fullLabel: `Senin, ${formatDateLabel(mondayLastWeek)}/${mondayLastWeek.getFullYear()}`
+    }
+  };
+};
+

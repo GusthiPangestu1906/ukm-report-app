@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import spinnerLoading from '../../assets/Spinner Loading.png';
+import { getQuickMondayPresets } from '../../utils/helpers';
 
 export default function StaffDashboard({
   openDropdown,
@@ -36,9 +37,23 @@ export default function StaffDashboard({
 }) {
   const [activeTab, setActiveTab] = useState('form');
   const [isEditingTime, setIsEditingTime] = useState(!tanggal);
+  const [isCustomDateMode, setIsCustomDateMode] = useState(false);
   const [expandedDrafts, setExpandedDrafts] = useState({});
   const [openDraftMenuId, setOpenDraftMenuId] = useState(null);
   const [isFormFilesExpanded, setIsFormFilesExpanded] = useState(true);
+
+  const quickPresets = getQuickMondayPresets();
+  const isSeninIniActive = (tanggal === quickPresets.seninIni.value);
+  const isSeninLaluActive = (tanggal === quickPresets.seninLalu.value);
+
+  const handleQuickPresetClick = (preset) => {
+    if (selectedBulan !== preset.monthVal) {
+      handleBulanSelect(preset.monthVal);
+    }
+    handleTanggalSelect(preset.value);
+    setIsCustomDateMode(false);
+    setIsEditingTime(false);
+  };
 
   const currentUploadIndex = processingId ? Math.max(1, laporans.findIndex(l => l.id === processingId) + 1) : 1;
   const totalUploads = laporans.length;
@@ -89,111 +104,153 @@ export default function StaffDashboard({
       
       {!isEditingTime && tanggal ? (
         <div className="settings-active-banner">
-          <div className="settings-info-text">
-            <span className="settings-label-small">WAKTU PELAPORAN AKTIF:</span>
-            <span className="settings-value-highlight">
-              {availableDates.find(d => d.value === tanggal)?.label || tanggal}
-            </span>
+          <div className="settings-banner-left">
+            <div className="settings-badge-row">
+              <span className="sender-pill-badge" title="Pengirim Laporan">
+                👤 <span className="sender-name">{penanggungJawab || 'Pengirim'}</span>
+              </span>
+              <span className="date-pill-badge">
+                📅 {availableDates.find(d => d.value === tanggal)?.label || tanggal}
+              </span>
+            </div>
           </div>
           <button type="button" onClick={() => setIsEditingTime(true)} className="btn-change-settings">
-            UBAH
+            ✏️ UBAH
           </button>
         </div>
       ) : (
       <div className="active-form-section" style={{ animation: 'slideDown 0.3s ease' }}>
-        {/* Nama Pengirim dipindahkan ke sini (Pengaturan Waktu) */}
-        <div className="input-group" style={{ marginTop: '12px' }}>
-          <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>
-            Nama Pengirim:
+        {/* NAMA PENGIRIM (PROFILE CARD) */}
+        <div className="input-group">
+          <label className="form-label" style={{ display: 'block', marginBottom: '4px' }}>
+            👤 NAMA PENGIRIM:
           </label>
-          <div style={{ position: 'relative', width: '100%' }}>
-            <input
-              type="text"
-              value={penanggungJawab}
-              onChange={(e) => setPenanggungJawab(e.target.value)}
-              className="form-input"
-              placeholder="Nama Anda (Penanggung Jawab)"
-              disabled={isLoading}
-              style={{ height: '48px', boxSizing: 'border-box', width: '100%' }}
-            />
+          <input
+            type="text"
+            value={penanggungJawab}
+            onChange={(e) => setPenanggungJawab(e.target.value)}
+            className="form-input"
+            placeholder="Nama Anda (Penanggung Jawab)"
+            disabled={isLoading}
+            style={{ height: '44px', boxSizing: 'border-box', width: '100%' }}
+          />
+        </div>
+
+        {/* QUICK DATE CHIPS */}
+        <div className="input-group">
+          <label className="form-label" style={{ display: 'block', marginBottom: '4px' }}>
+            📅 PILIH TANGGAL REPORTING:
+          </label>
+          <div className="quick-date-chips-wrapper">
+            <button
+              type="button"
+              className={`quick-date-chip ${isSeninIniActive ? 'active' : ''}`}
+              onClick={() => handleQuickPresetClick(quickPresets.seninIni)}
+            >
+              <span className="chip-icon">⚡</span>
+              <span>{quickPresets.seninIni.label}</span>
+            </button>
+            <button
+              type="button"
+              className={`quick-date-chip ${isSeninLaluActive ? 'active' : ''}`}
+              onClick={() => handleQuickPresetClick(quickPresets.seninLalu)}
+            >
+              <span className="chip-icon">⏮️</span>
+              <span>{quickPresets.seninLalu.label}</span>
+            </button>
+            <button
+              type="button"
+              className={`quick-date-chip ${isCustomDateMode || (!isSeninIniActive && !isSeninLaluActive) ? 'active' : ''}`}
+              onClick={() => setIsCustomDateMode(!isCustomDateMode)}
+            >
+              <span className="chip-icon">🗓️</span>
+              <span>Lainnya...</span>
+            </button>
           </div>
         </div>
         
-        <div className="input-group">
-          <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>
-            Pilih Bulan Laporan:
-          </label>
-          <div className="custom-select-wrapper">
-            <div
-              className={`custom-select-trigger ${openDropdown === 'month' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
-              onClick={() => !isLoading && setOpenDropdown(openDropdown === 'month' ? null : 'month')}
-              style={{ height: '52px', boxSizing: 'border-box' }}
-            >
-              <div className="custom-select-value">
-                {selectedBulan ? <span>{uniqueBulanOptions.find(b => b.value === selectedBulan)?.label || selectedBulan}</span> : <span className="custom-select-placeholder">-- Menunggu Input --</span>}
-              </div>
-              <span className="chevron-icon">▼</span>
-            </div>
-            {openDropdown === 'month' && (
-              <div className="custom-select-dropdown">
-                {uniqueBulanOptions.map((b, idx) => (
-                  <div key={idx} className={`custom-select-item ${selectedBulan === b.value ? 'selected' : ''}`} onClick={() => handleBulanSelect(b.value)}>
-                    <span style={{ fontSize: '14px', opacity: selectedBulan === b.value ? 1 : 0.5 }}>{'>'}</span>
-                    <span>{b.label}</span>
+        {/* CUSTOM DROPDOWNS (BULAN & TANGGAL SENIN) - Only show if custom mode or custom date active */}
+        {(isCustomDateMode || (!isSeninIniActive && !isSeninLaluActive)) && (
+          <div className="custom-date-section" style={{ animation: 'fadeIn 0.2s ease', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+            <div className="input-group">
+              <label className="form-label">Pilih Bulan Laporan:</label>
+              <div className="custom-select-wrapper">
+                <div
+                  className={`custom-select-trigger ${openDropdown === 'month' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
+                  onClick={() => !isLoading && setOpenDropdown(openDropdown === 'month' ? null : 'month')}
+                  style={{ height: '48px', boxSizing: 'border-box' }}
+                >
+                  <div className="custom-select-value">
+                    {selectedBulan ? <span>{uniqueBulanOptions.find(b => b.value === selectedBulan)?.label || selectedBulan}</span> : <span className="custom-select-placeholder">-- Menunggu Input --</span>}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="input-group">
-          <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>
-            Pilih Tanggal (Senin):
-            {isTanggalLocked && <span className="lock-badge" style={{ marginLeft: '8px' }}>🔒 Pilih Bulan Dulu</span>}
-          </label>
-          <div className="custom-select-wrapper" style={{ opacity: isTanggalLocked ? 0.4 : 1, pointerEvents: isTanggalLocked ? 'none' : 'auto', transition: '0.3s' }}>
-            <div
-              className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
-              onClick={() => !isLoading && !isTanggalLocked && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
-              style={{ height: '52px', boxSizing: 'border-box' }}
-            >
-              <div className="custom-select-value">
-                {tanggal ? (
-                  <>
-                    <span>[D]</span>
-                    <span>
-                      {availableDates.find(d => d.value === tanggal)?.label || tanggal}
-                    </span>
-                  </>
-                ) : (
-                  <span className="custom-select-placeholder">-- Menunggu Input --</span>
+                  <span className="chevron-icon">▼</span>
+                </div>
+                {openDropdown === 'month' && (
+                  <div className="custom-select-dropdown">
+                    {uniqueBulanOptions.map((b, idx) => (
+                      <div key={idx} className={`custom-select-item ${selectedBulan === b.value ? 'selected' : ''}`} onClick={() => handleBulanSelect(b.value)}>
+                        <span style={{ fontSize: '14px', opacity: selectedBulan === b.value ? 1 : 0.5 }}>{'>'}</span>
+                        <span>{b.label}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-              <span className="chevron-icon">▼</span>
             </div>
-            {openDropdown === 'date' && (
-              <div className="custom-select-dropdown">
-                {availableDates.length > 0 ? availableDates.map((dateObj, idx) => {
-                  return (
-                    <div key={idx} className={`custom-select-item ${tanggal === dateObj.value ? 'selected' : ''}`} onClick={() => handleTanggalSelect(dateObj.value)}>
-                      <span style={{ fontSize: '14px', opacity: tanggal === dateObj.value ? 1 : 0.5 }}>{'>'}</span>
-                      <span>
-                        {dateObj.label}
-                      </span>
-                    </div>
-                  );
-                }) : (
-                  <div className="custom-select-item" style={{ justifyContent: 'center', color: '#4b5563', cursor: 'default' }}>TIDAK ADA DATA</div>
+
+            <div className="input-group">
+              <label className="form-label">
+                Pilih Tanggal (Senin):
+                {isTanggalLocked && <span className="lock-badge" style={{ marginLeft: '8px' }}>🔒 Pilih Bulan Dulu</span>}
+              </label>
+              <div className="custom-select-wrapper" style={{ opacity: isTanggalLocked ? 0.4 : 1, pointerEvents: isTanggalLocked ? 'none' : 'auto', transition: '0.3s' }}>
+                <div
+                  className={`custom-select-trigger ${openDropdown === 'date' ? 'active' : ''} ${isLoading ? 'disabled' : ''}`}
+                  onClick={() => !isLoading && !isTanggalLocked && setOpenDropdown(openDropdown === 'date' ? null : 'date')}
+                  style={{ height: '48px', boxSizing: 'border-box' }}
+                >
+                  <div className="custom-select-value">
+                    {tanggal ? (
+                      <>
+                        <span>[D]</span>
+                        <span>
+                          {availableDates.find(d => d.value === tanggal)?.label || tanggal}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="custom-select-placeholder">-- Menunggu Input --</span>
+                    )}
+                  </div>
+                  <span className="chevron-icon">▼</span>
+                </div>
+                {openDropdown === 'date' && (
+                  <div className="custom-select-dropdown">
+                    {availableDates.length > 0 ? availableDates.map((dateObj, idx) => {
+                      return (
+                        <div key={idx} className={`custom-select-item ${tanggal === dateObj.value ? 'selected' : ''}`} onClick={() => handleTanggalSelect(dateObj.value)}>
+                          <span style={{ fontSize: '14px', opacity: tanggal === dateObj.value ? 1 : 0.5 }}>{'>'}</span>
+                          <span>
+                            {dateObj.label}
+                          </span>
+                        </div>
+                      );
+                    }) : (
+                      <div className="custom-select-item" style={{ justifyContent: 'center', color: '#4b5563', cursor: 'default' }}>TIDAK ADA DATA</div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {tanggal && (
-          <button type="button" onClick={() => setIsEditingTime(false)} style={{ marginTop: '12px', padding: '12px', fontSize: '12px', width: '100%', background: 'transparent', border: '1px dashed var(--neon-cyan)', color: 'var(--neon-cyan)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'var(--font-tech)' }}>
-            SIMPAN WAKTU
+          <button
+            type="button"
+            onClick={() => setIsEditingTime(false)}
+            className="btn-save-settings"
+          >
+            ✓ SIMPAN & SELESAI
           </button>
         )}
       </div>
@@ -206,9 +263,10 @@ export default function StaffDashboard({
       </div>
 
       <div className="active-form-section" style={{ opacity: isEntriLocked ? 0.35 : 1, pointerEvents: isEntriLocked ? 'none' : 'auto', transition: '0.3s', filter: isEntriLocked ? 'grayscale(0.5)' : 'none' }}>
+        {/* NAMA UKM & QUICK SUGGESTION CHIPS */}
         <div className="input-group">
-          <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Nama UKM:</label>
-          <div className="ukm-input-container">
+          <label className="form-label" style={{ display: 'block', marginBottom: '6px' }}>🏷️ NAMA UKM:</label>
+          <div className="ukm-input-container" style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
             <input
               type="text"
               value={currentUkm}
@@ -217,24 +275,18 @@ export default function StaffDashboard({
               placeholder="Cth: UKM Tari"
               disabled={isLoading}
               style={{
-                height: '52px', boxSizing: 'border-box', width: '100%', paddingRight: '40px',
-                borderColor: ukmError && currentUkm ? 'var(--neon-red)' : (currentUkm && !ukmError ? 'var(--neon-green)' : undefined),
-                outlineColor: ukmError && currentUkm ? 'var(--neon-red)' : (currentUkm && !ukmError ? 'var(--neon-green)' : undefined),
-                backgroundColor: ukmError && currentUkm ? 'var(--neon-red-dim)' : (currentUkm && !ukmError ? 'rgba(16, 185, 129, 0.05)' : undefined)
+                height: '48px', boxSizing: 'border-box', width: '100%', paddingRight: ukmError && currentUkm ? '40px' : '16px',
+                borderColor: ukmError && currentUkm ? 'var(--neon-red)' : undefined,
+                outlineColor: ukmError && currentUkm ? 'var(--neon-red)' : undefined,
+                backgroundColor: ukmError && currentUkm ? 'var(--neon-red-dim)' : undefined
               }}
             />
-            {currentUkm && (
-              <span className={`ukm-validation-icon ${ukmError ? 'error' : 'success'}`}>
-                {ukmError ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                )}
+            {ukmError && currentUkm && (
+              <span className="ukm-validation-icon error" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </span>
             )}
           </div>
@@ -250,60 +302,96 @@ export default function StaffDashboard({
               <span className="warning-card__text">{ukmError}</span>
             </div>
           )}
+
+
         </div>
 
+        {/* LAMPIRAN FOTO KEGIATAN & THUMBNAILS GRID */}
         <div className="input-group">
-          <label className="form-label" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>Lampiran File (Maks: 3):</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <label className="form-label">📸 LAMPIRAN FOTO KEGIATAN:</label>
+            <span className="photo-quota-badge">
+              {currentFotos.length}/3 Foto
+            </span>
+          </div>
+
           {currentFotos.length < 3 && (
             <label className="file-dropzone" style={{ opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto' }}>
-              <input type="file" accept="image/jpeg, image/png, image/jpg, image/webp" multiple onChange={handleFileChange} className="hidden-input" disabled={isLoading} />
-              <span className="dropzone-icon">📁</span>
-              <span className="dropzone-text">[ KLIK/TAP UNTUK MENGUNGGAH ]</span>
-              <span className="dropzone-subtext">MENDUKUNG FORMAT: JPG/PNG/WEBP</span>
+              <input
+                type="file"
+                accept="image/jpeg, image/png, image/jpg, image/webp"
+                multiple
+                onChange={handleFileChange}
+                className="hidden-file-input"
+                disabled={isLoading}
+              />
+              <div className="dropzone-inner">
+                <div className="dropzone-icon-circle">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                </div>
+                <div className="dropzone-text-group">
+                  <span className="dropzone-main-text">KLIK / UNGGAH FOTO KEGIATAN</span>
+                  <span className="dropzone-subtext">JPG, PNG, WEBP (Maks 10MB per file)</span>
+                </div>
+              </div>
             </label>
           )}
 
+          {/* INSTANT PHOTO THUMBNAILS GRID */}
           {currentFotos.length > 0 && (
-            <div className="draft-dropdown-wrapper" style={{ marginTop: '12px' }}>
-              <button 
-                type="button" 
-                onClick={() => setIsFormFilesExpanded(!isFormFilesExpanded)} 
-                className={`draft-dropdown-trigger ${isFormFilesExpanded ? 'active' : ''}`}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                  <span>{currentFotos.length} Lampiran<span className="hide-on-mobile"> File Diunggah</span></span>
-                </div>
-                <span className="toggle-chevron">▼</span>
-              </button>
-              
-              {isFormFilesExpanded && (
-                <div className="draft-dropdown-content">
-                  {currentFotos.map((foto, index) => {
-                    const previewUrl = URL.createObjectURL(foto);
-                    return (
-                      <div key={index} className="draft-dropdown-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '12px', cursor: 'default' }}>
-                        <div 
-                          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', overflow: 'hidden' }}
-                          onClick={() => setPreviewImage(previewUrl)}
-                          title="Klik untuk lihat gambar"
-                        >
-                          <span className="tech-file-icon">🖼️</span>
-                          <span className="tech-file-name" style={{ fontSize: '12px', fontFamily: 'var(--font-tech)' }}>{foto.name}</span>
-                        </div>
-                        <button type="button" onClick={() => removeCurrentFoto(index)} className="btn-delete-file" disabled={isLoading} title="Hapus File">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                        </button>
+            <div className="photo-thumbnail-grid">
+              {currentFotos.map((foto, index) => {
+                const previewUrl = URL.createObjectURL(foto);
+                const fileSizeFormatted = (foto.size / (1024 * 1024)).toFixed(2) + ' MB';
+                return (
+                  <div key={index} className="photo-thumbnail-card">
+                    <div className="photo-thumbnail-img-wrapper" onClick={() => setPreviewImage(previewUrl)} title="Klik untuk memperbesar">
+                      <img src={previewUrl} alt={foto.name} className="photo-thumbnail-img" />
+                      <div className="photo-thumbnail-overlay">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+                    <div className="photo-thumbnail-info">
+                      <span className="photo-thumbnail-name" title={foto.name}>{foto.name}</span>
+                      <span className="photo-thumbnail-size">{fileSizeFormatted}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeCurrentFoto(index)}
+                      className="btn-remove-photo-thumbnail"
+                      disabled={isLoading}
+                      title="Hapus foto ini"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-        <button type="button" onClick={addToDraft} className="btn-add-draft" disabled={isLoading}>
-          {isLoading ? 'MENYIAPKAN DATA...' : '+ MASUKKAN KE ANTREAN'}
+
+        <button
+          type="button"
+          onClick={addToDraft}
+          className="btn-add-draft-modern"
+          disabled={isLoading}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>{isLoading ? 'MENYIAPKAN DATA...' : 'MASUKKAN KE ANTREAN'}</span>
         </button>
       </div>
         </div>

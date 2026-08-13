@@ -149,8 +149,18 @@ function App() {
       date.setDate(date.getDate() + 1);
     }
     setAvailableDates(mondays);
+    
     const savedFormState = cache.get(CACHE_KEYS.formState);
-    if (!savedFormState?.tanggal) setTanggal('');
+    if (savedFormState?.tanggal && mondays.some(m => m.value === savedFormState.tanggal)) {
+      setTanggal(savedFormState.tanggal);
+      setCompletedSteps(prev => ({ ...prev, bulan: true, tanggal: true }));
+    } else if (mondays.length > 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const pastOrToday = mondays.filter(m => m.value <= todayStr);
+      const autoMonday = pastOrToday.length > 0 ? pastOrToday[pastOrToday.length - 1].value : mondays[0].value;
+      setTanggal(autoMonday);
+      setCompletedSteps(prev => ({ ...prev, bulan: true, tanggal: true }));
+    }
   }, [selectedBulan]);
 
   const handleLogin = async () => {
