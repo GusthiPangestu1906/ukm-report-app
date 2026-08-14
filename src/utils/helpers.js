@@ -59,13 +59,13 @@ export const getQuickMondayPresets = () => {
     seninIni: {
       value: formatDateVal(mondayThisWeek),
       monthVal: `${mondayThisWeek.getFullYear()}-${String(mondayThisWeek.getMonth() + 1).padStart(2, '0')}`,
-      label: `Senin Ini (${formatDateLabel(mondayThisWeek)})`,
+      label: `Senin (${formatDateLabel(mondayThisWeek)})`,
       fullLabel: `Senin, ${formatDateLabel(mondayThisWeek)}/${mondayThisWeek.getFullYear()}`
     },
     seninLalu: {
       value: formatDateVal(mondayLastWeek),
       monthVal: `${mondayLastWeek.getFullYear()}-${String(mondayLastWeek.getMonth() + 1).padStart(2, '0')}`,
-      label: `Senin Lalu (${formatDateLabel(mondayLastWeek)})`,
+      label: `Senin (${formatDateLabel(mondayLastWeek)})`,
       fullLabel: `Senin, ${formatDateLabel(mondayLastWeek)}/${mondayLastWeek.getFullYear()}`
     }
   };

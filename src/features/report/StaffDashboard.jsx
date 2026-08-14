@@ -331,8 +331,8 @@ export default function StaffDashboard({
                   </svg>
                 </div>
                 <div className="dropzone-text-group">
-                  <span className="dropzone-main-text">KLIK / UNGGAH FOTO KEGIATAN</span>
-                  <span className="dropzone-subtext">JPG, PNG, WEBP (Maks 10MB per file)</span>
+                  <span className="dropzone-main-text">UNGGAH FOTO KEGIATAN</span>
+                  <span className="dropzone-subtext">JPG, PNG (Maks 10MB per file)</span>
                 </div>
               </div>
             </label>
