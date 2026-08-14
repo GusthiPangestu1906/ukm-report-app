@@ -35,10 +35,8 @@ export default function AuthScreen({
         </div>
 
         <button onClick={handleMainAction} className="minimal-btn-google" disabled={isGoogleLoading}>
-          {isGoogleLoading ? (
-            <img src={spinnerLoading} alt="Loading..." className="minimal-spinner-icon" />
-          ) : (
-            !user && <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="minimal-google-icon" />
+          {!isGoogleLoading && !user && (
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="minimal-google-icon" />
           )}
           <span className="minimal-btn-text">
             {isGoogleLoading ? 'Memproses...' : (user ? 'Masuk ke Formulir' : 'Masuk dengan Google')}

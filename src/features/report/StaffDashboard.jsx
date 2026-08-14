@@ -147,7 +147,6 @@ export default function StaffDashboard({
               className={`quick-date-chip ${isSeninIniActive ? 'active' : ''}`}
               onClick={() => handleQuickPresetClick(quickPresets.seninIni)}
             >
-              <span className="chip-icon">⚡</span>
               <span>{quickPresets.seninIni.label}</span>
             </button>
             <button
@@ -155,7 +154,6 @@ export default function StaffDashboard({
               className={`quick-date-chip ${isSeninLaluActive ? 'active' : ''}`}
               onClick={() => handleQuickPresetClick(quickPresets.seninLalu)}
             >
-              <span className="chip-icon">⏮️</span>
               <span>{quickPresets.seninLalu.label}</span>
             </button>
             <button
@@ -163,7 +161,6 @@ export default function StaffDashboard({
               className={`quick-date-chip ${isCustomDateMode || (!isSeninIniActive && !isSeninLaluActive) ? 'active' : ''}`}
               onClick={() => setIsCustomDateMode(!isCustomDateMode)}
             >
-              <span className="chip-icon">🗓️</span>
               <span>Lainnya...</span>
             </button>
           </div>
@@ -387,10 +384,12 @@ export default function StaffDashboard({
           className="btn-add-draft-modern"
           disabled={isLoading}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
+          {!isLoading && (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          )}
           <span>{isLoading ? 'MENYIAPKAN DATA...' : 'MASUKKAN KE ANTREAN'}</span>
         </button>
       </div>
@@ -497,10 +496,7 @@ export default function StaffDashboard({
 
         <button type="button" onClick={handleSubmit} disabled={isLoading || laporans.length === 0} className={`submit-button ${isLoading ? 'loading' : ''}`}>
           {isLoading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-              <img src={spinnerLoading} alt="Loading" style={{ width: '18px', height: '18px', animation: 'spinLoading 1s linear infinite' }} />
-              <span>MENGUNGGAH {currentUploadIndex}/{totalUploads}</span>
-            </div>
+            <span>MENGUNGGAH {currentUploadIndex}/{totalUploads}</span>
           ) : (
             `JALANKAN PENGUNGGAHAN (${laporans.length})`
           )}

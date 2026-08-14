@@ -454,18 +454,7 @@ function App() {
 
   // RENDER: LAYAR LOADING
   if (isAuthLoading) {
-    return (
-      <div className="tech-auth-container tech-bg" style={{ backgroundColor: '#fff', backgroundImage: 'none' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <img
-            src={spinnerLoading}
-            alt="Loading spinner"
-            className="loading-spinner"
-            style={{ width: '120px', maxWidth: '80%', objectFit: 'contain' }}
-          />
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // RENDER: LAYAR AUTHENTICATION
@@ -506,7 +495,7 @@ function App() {
               <h2 className="form-title" style={{ margin: 0, textAlign: 'left', fontSize: '18px', fontWeight: '800', letterSpacing: '-0.3px', color: '#1e1b4b' }}>
                 Formulir Pelaporan
               </h2>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Sistem Laporan Kegiatan UKM</span>
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Laporan Kegiatan UKM</span>
             </div>
           </div>
 
@@ -534,12 +523,6 @@ function App() {
                 flexShrink: 0
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-              </svg>
               <span>Spreadsheet</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
