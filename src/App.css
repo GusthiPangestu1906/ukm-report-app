@@ -1,8 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-@import './styles/tokens.css';
-@import './styles/base.css';
-@import './styles/auth.css';
-@import './styles/dashboard.css';
-@import './styles/form.css';
-@import './styles/modal.css';
+/* Global UI & Tokens */
+@import './features/ui/styles/tokens.css';
+@import './features/ui/styles/base.css';
+@import './features/ui/styles/modal.css';
+
+/* Feature: Auth */
+@import './features/auth/styles/auth.css';
+
+/* Feature: Report */
+@import './features/report/styles/dashboard.css';
+@import './features/report/styles/form.css';

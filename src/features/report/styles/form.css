@@ -1,0 +1,11 @@
+/**
+ * FORM MANIFEST
+ * Refactored using Clean Architecture decomposition.
+ * Feature: Report Form
+ */
+
+@import './form-shared.css';
+@import './form-settings.css';
+@import './form-entry.css';
+@import './form-queue.css';
+@import './form-responsive.css';
