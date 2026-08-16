@@ -1,7 +1,7 @@
 import React from 'react';
 
 const QueueSection = ({
-  isAntreanLocked, laporans, uploadProgress, processingId, tanggal,
+  isAntreanLocked, laporans, processingId, tanggal,
   availableDates, openDraftMenuId, setOpenDraftMenuId, handleEditDraft,
   setActiveTab, removeDraft, toggleDraftExpand, expandedDrafts, setPreviewImage,
   handleSubmit, isLoading, currentUploadIndex, totalUploads
@@ -19,9 +19,7 @@ const QueueSection = ({
           <div className="empty-draft">[ ANTREAN KOSONG ]</div>
         ) : (
           laporans.map((laporan, index) => {
-            const currentProgress = uploadProgress[laporan.id] || 0;
-            const isProcessing = processingId === laporan.id || currentProgress > 0;
-            const isSuccess = currentProgress === 100;
+            const isProcessing = processingId === laporan.id;
             return (
               <div className={`draft-item ${isProcessing ? 'processing' : ''}`} key={laporan.id}>
                 <div className="draft-item-header">
@@ -76,18 +74,6 @@ const QueueSection = ({
                       </div>
                     )}
                   </div>
-                  {isProcessing && (
-                    <div className="progress-container">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <span className={`draft-status-text ${isSuccess ? 'success' : ''}`}>
-                          {isSuccess ? 'TERKIRIM' : `MENGUNGGAH... ${currentProgress}%`}
-                        </span>
-                      </div>
-                      <div className="progress-bar-bg">
-                        <div className={`progress-bar-fill ${isSuccess ? 'success' : ''}`} style={{ width: `${currentProgress}%` }}></div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             );

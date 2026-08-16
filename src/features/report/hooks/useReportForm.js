@@ -11,6 +11,7 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
   const [isLoading, setIsLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
+  const [uploadStageText, setUploadStageText] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
@@ -151,7 +152,26 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
 
       for (let laporan of laporans) {
         setProcessingId(laporan.id);
-        setUploadProgress(prev => ({ ...prev, [laporan.id]: 20 }));
+        setUploadProgress(prev => ({ ...prev, [laporan.id]: 8 }));
+        setUploadStageText(prev => ({ ...prev, [laporan.id]: 'Mempersiapkan berkas...' }));
+
+        let currentP = 8;
+        const progressInterval = setInterval(() => {
+          if (currentP < 90) {
+            const step = Math.floor(Math.random() * 8) + 4;
+            currentP = Math.min(92, currentP + step);
+
+            let stage = 'Mengompresi & membaca foto...';
+            if (currentP > 30 && currentP <= 65) {
+              stage = 'Mengirim data laporan ke database...';
+            } else if (currentP > 65) {
+              stage = 'Menyimpan & memverifikasi respons server...';
+            }
+
+            setUploadProgress(prev => ({ ...prev, [laporan.id]: currentP }));
+            setUploadStageText(prev => ({ ...prev, [laporan.id]: stage }));
+          }
+        }, 180);
 
         try {
           const payload = {
@@ -162,13 +182,22 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
           };
 
           const result = await reportApi.submitReport(payload);
+          clearInterval(progressInterval);
+
           if (result.status === 'success') {
             setUploadProgress(prev => ({ ...prev, [laporan.id]: 100 }));
+            setUploadStageText(prev => ({ ...prev, [laporan.id]: 'Laporan Berhasil Terkirim!' }));
+            await new Promise(res => setTimeout(res, 400));
             successCount++;
           } else {
+            setUploadProgress(prev => ({ ...prev, [laporan.id]: 0 }));
+            setUploadStageText(prev => ({ ...prev, [laporan.id]: 'Gagal Mengunggah' }));
             failCount++;
           }
         } catch (err) {
+          clearInterval(progressInterval);
+          setUploadProgress(prev => ({ ...prev, [laporan.id]: 0 }));
+          setUploadStageText(prev => ({ ...prev, [laporan.id]: 'Gagal (Koneksi Terputus)' }));
           failCount++;
         }
       }
@@ -181,6 +210,7 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
         showAlert("PENGIRIMAN BERHASIL", `Seluruh ${successCount} laporan UKM berhasil terkirim ke server!`, "success");
         setLaporans([]);
         setUploadProgress({});
+        setUploadStageText({});
       } else {
         showAlert("SEBAGIAN GAGAL", `${successCount} berhasil terkirim, ${failCount} gagal. Silakan coba lagi untuk data yang tersisa.`, "warning");
         setLaporans(prev => prev.filter(l => (uploadProgress[l.id] || 0) !== 100));
@@ -193,7 +223,7 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
   };
 
   return {
-    currentUkm, ukmError, laporans, currentFotos, isLoading, processingId, uploadProgress,
+    currentUkm, ukmError, laporans, currentFotos, isLoading, processingId, uploadProgress, uploadStageText,
     previewImage, setPreviewImage, handleUkmChange, handleFileChange, removeCurrentFoto,
     addToDraft, handleEditDraft, handleSubmit, removeDraft
   };
