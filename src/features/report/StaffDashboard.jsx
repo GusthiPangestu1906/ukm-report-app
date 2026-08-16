@@ -11,8 +11,9 @@ export default function StaffDashboard(props) {
     selectedBulan, bulanOptions
   } = props;
 
+  const { penanggungJawab } = props;
   const [activeTab, setActiveTab] = useState('form');
-  const [isEditingTime, setIsEditingTime] = useState(!tanggal);
+  const [isEditingTime, setIsEditingTime] = useState(!penanggungJawab || !tanggal);
   const [isCustomDateMode, setIsCustomDateMode] = useState(false);
   const [expandedDrafts, setExpandedDrafts] = useState({});
   const [openDraftMenuId, setOpenDraftMenuId] = useState(null);
@@ -27,7 +28,9 @@ export default function StaffDashboard(props) {
     }
     handleTanggalSelect(preset.value);
     setIsCustomDateMode(false);
-    setIsEditingTime(false);
+    if (penanggungJawab) {
+      setIsEditingTime(false);
+    }
   };
 
   const toggleDraftExpand = (id) => {
@@ -35,8 +38,10 @@ export default function StaffDashboard(props) {
   };
 
   useEffect(() => {
-    setIsEditingTime(!tanggal);
-  }, [tanggal]);
+    if (!penanggungJawab || !tanggal) {
+      setIsEditingTime(true);
+    }
+  }, [penanggungJawab, tanggal]);
 
   const uniqueBulanOptions = bulanOptions.filter((v, i, a) => a.findIndex(t => (t.value === v.value)) === i);
   const currentUploadIndex = processingId ? Math.max(1, laporans.findIndex(l => l.id === processingId) + 1) : 1;

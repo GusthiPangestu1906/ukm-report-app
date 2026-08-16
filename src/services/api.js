@@ -1,4 +1,4 @@
-export const SCRIPT_URL = import.meta.env.VITE_API_URL || 'https://script.google.com/macros/s/AKfycbx5YBwntBuQQ0SFy5Zv2-3Mt4-K46HAx45z9kWWTiYy5Bjz5TlAhzOESh2QUv7pTDWiDQ/exec';
+export const SCRIPT_URL = (import.meta.env.VITE_API_URL || '').trim();
 
 export const reportApi = {
   fetchHistory: async () => {

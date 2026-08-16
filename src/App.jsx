@@ -12,6 +12,7 @@ import Modal from './features/ui/Modal';
 import ImagePreviewOverlay from './features/ui/ImagePreviewOverlay';
 import Header from './features/ui/components/Header';
 import LogoutModal from './features/ui/components/LogoutModal';
+import UploadProgressModal from './features/ui/components/UploadProgressModal';
 
 // Hooks (Business Logic Layer)
 import { useAuth } from './features/auth/hooks/useAuth';
@@ -127,6 +128,15 @@ function App() {
 
       {/* Global Overlays */}
       <Modal modal={modal} />
+
+      <UploadProgressModal
+        isLoading={reportForm.isLoading}
+        laporans={reportForm.laporans}
+        processingId={reportForm.processingId}
+        uploadProgress={reportForm.uploadProgress}
+        currentUploadIndex={reportForm.processingId ? Math.max(1, reportForm.laporans.findIndex(l => l.id === reportForm.processingId) + 1) : 1}
+        totalUploads={reportForm.laporans.length}
+      />
 
       <LogoutModal
         show={showLogoutPrompt}

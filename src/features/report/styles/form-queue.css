@@ -239,3 +239,220 @@
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* ==========================================================================
+   PROGRESS BAR STYLES (OVERALL & INDIVIDUAL DRAFT)
+   ========================================================================== */
+
+/* Overall Batch Upload Banner */
+.overall-upload-banner {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.06);
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.overall-upload-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.overall-upload-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #7e22ce;
+  letter-spacing: 0.2px;
+}
+
+.overall-upload-badge {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(168, 85, 247, 0.3);
+}
+
+.overall-bar-bg {
+  margin-top: 10px;
+  height: 8px;
+}
+
+.overall-bar-fill {
+  height: 100%;
+}
+
+/* Individual Item Progress Container */
+.progress-container {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #fcf7ff 0%, #f3e8ff 100%);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 12px;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 12px rgba(168, 85, 247, 0.08);
+}
+
+.progress-container.is-success {
+  background: linear-gradient(135deg, #f0fdf4 0%, #d1fae5 100%);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.12);
+}
+
+.progress-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.progress-status-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-icon-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.progress-icon-badge.uploading {
+  background: rgba(168, 85, 247, 0.15);
+  color: #9333ea;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+}
+
+.progress-icon-badge.success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #059669;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.progress-text-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.draft-status-text {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #7e22ce;
+}
+
+.draft-status-text.success {
+  color: #047857;
+}
+
+.progress-stage-subtext {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b21a8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-container.is-success .progress-stage-subtext {
+  color: #065f46;
+}
+
+.progress-percent-badge {
+  background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.35);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.progress-percent-badge.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+/* Progress Track & Animated Fill */
+.progress-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a855f7 0%, #ec4899 50%, #6366f1 100%);
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.45);
+}
+
+.progress-bar-fill.success {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+}
+
+.progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.6s infinite ease-in-out;
+}
+
+/* Keyframe Animations */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes spinIcon {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.spin-icon {
+  animation: spinIcon 0.9s linear infinite;
+}
+
