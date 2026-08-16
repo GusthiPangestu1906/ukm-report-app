@@ -1,17 +1,21 @@
-# Feature Folder Hierarchy
+# Feature Folder Hierarchy & Architecture
 
-Folder ini mengelompokkan fungsionalitas utama `App.jsx` berdasarkan fitur.
+Folder ini mengelompokkan fungsionalitas utama `App.jsx` berdasarkan arsitektur fitur modular.
 
-- `auth/` - komponen dan utilitas otentikasi Google/Firebase
-- `role/` - pemilihan peran pengguna dan verifikasi admin
-- `profile/` - proses pengisian profil staf
-- `report/` - logika entri laporan, antrean draf, dan pengiriman
-- `admin/` - pengelolaan infrastruktur database dan audit log admin
-- `history/` - fetch dan cache riwayat laporan
-- `ui/` - komponen UI umum seperti modal, loading, dan layar kondisi
+## Sub-Folder Fitur Utama (`src/features/`)
 
-Utility bersama berada di `src/utils/`:
-- `cache.js` - wrapper localStorage untuk kunci cache aplikasi
-- `regex.js` - aturan validasi input
-- `constants.js` - konstanta global sistem
-- `helpers.js` - helper fungsi umum seperti pemrosesan bulan dan ekstraksi ID folder
+- `auth/` - Layar login otentikasi Email & Password kredensial khusus, hook `useAuth`, dan styling antarmuka login.
+- `report/` - Komponen entri data laporan UKM, pengaturan periode/tanggal, antrean draf, serta hook manajemen formulir (`useReportForm`, `useDateSettings`, `useReportHistory`).
+- `ui/` - Komponen UI global terpusat termasuk `UploadProgressModal` (modal notifikasi progress pengunggahan), `Modal` umum, `ImagePreviewOverlay`, dan sistem styling terdekomposisi.
+- `role/` - Pemilihan peran pengguna dan verifikasi hak akses.
+- `profile/` - Pengelolaan profil staf dan identitas pengirim laporan.
+- `admin/` - Pengelolaan infrastruktur database dan audit log admin.
+- `history/` - Modul fetch dan pemeliharaan cache riwayat laporan UKM.
+
+## Utilitas Bersama (`src/utils/`)
+
+- `cache.js` - Wrapper `localStorage` untuk manajemen cache dan persistensi sesi pengguna.
+- `regex.js` - Aturan validasi pola string input.
+- `constants.js` - Konstanta global dan identifikasi sistem.
+- `helpers.js` - Helper pemrosesan tanggal Senin, penentuan opsi bulan, dan utilitas pendukung.
+
