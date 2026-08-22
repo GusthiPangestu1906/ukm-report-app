@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 // Assets
-import logoLmb from './assets/Logo LMB.jpg';
+import logoMedfo from './assets/Medfo.png';
 import spinnerLoading from './assets/Spinner Loading.png';
 
 // Components
@@ -90,7 +90,7 @@ function App() {
     return (
       <AuthScreen
         user={user}
-        logoLmb={logoLmb}
+        logoMedfo={logoMedfo}
         spinnerLoading={spinnerLoading}
         isGoogleLoading={isGoogleLoading}
         onLogin={handleLogin}
