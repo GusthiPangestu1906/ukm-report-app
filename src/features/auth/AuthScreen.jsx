@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 export default function AuthScreen({
+  logoMedfo,
   logoLmb,
   isGoogleLoading,
   user,
@@ -28,7 +29,10 @@ export default function AuthScreen({
   return (
     <div className="minimal-auth-container">
       <div className="minimal-auth-wrapper">
-        <img src={logoLmb} alt="LMB PENS Logo" className="minimal-logo-img" />
+        <div className="minimal-logo-wrapper">
+          <div className="minimal-logo-glow"></div>
+          <img src={logoMedfo || logoLmb} alt="Medfo Logo" className="minimal-logo-img" />
+        </div>
         <h1 className="minimal-title">UKM Report</h1>
         <p className="minimal-subtitle">Sistem Pelaporan Internal</p>
 

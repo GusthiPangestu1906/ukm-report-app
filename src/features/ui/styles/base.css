@@ -67,3 +67,23 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Header Logo — responsive size */
+.header-logo {
+  width: clamp(44px, 6vw, 60px);
+  height: clamp(44px, 6vw, 60px);
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.header-logo:hover {
+  transform: scale(1.06);
+}
+
+@media (max-width: 480px) {
+  .header-logo {
+    width: 42px;
+    height: 42px;
+  }
+}

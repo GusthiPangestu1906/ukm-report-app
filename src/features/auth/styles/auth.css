@@ -5,7 +5,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 16px;
+  padding: 80px 16px 40px;
   background: var(--gradient-app);
   box-sizing: border-box;
 }
@@ -15,7 +15,7 @@
   max-width: 420px;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(20px);
-  padding: 36px 28px;
+  padding: 80px 28px 36px;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
   border: 1px solid var(--color-border-subtle);
@@ -25,15 +25,92 @@
   text-align: center;
   box-sizing: border-box;
   animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  margin-top: 60px;
 }
 
+/* Logo: floats above card center, overlapping the top edge */
+.minimal-logo-wrapper {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Outer ambient blur aura */
+.minimal-logo-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217, 70, 239, 0.55) 0%, rgba(147, 51, 234, 0.3) 40%, transparent 72%);
+  filter: blur(18px);
+  pointer-events: none;
+  z-index: 0;
+  animation: pulseGlow 3s ease-in-out infinite alternate;
+}
+
+/* Badge ring circle behind logo */
+.minimal-logo-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    #d946ef 0deg,
+    #9333ea 90deg,
+    #4338ca 180deg,
+    #d946ef 360deg
+  );
+  z-index: 1;
+  animation: spinRing 8s linear infinite;
+}
+
+/* White badge disc inside ring */
+.minimal-logo-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffffff 60%, #f3e8ff 100%);
+  z-index: 2;
+  box-shadow: inset 0 2px 8px rgba(147, 51, 234, 0.1);
+}
+
+@keyframes spinRing {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulseGlow {
+  0%   { transform: scale(0.88); opacity: 0.7; }
+  100% { transform: scale(1.15); opacity: 1; }
+}
+
+
+
 .minimal-logo-img {
-  width: 80px;
-  height: 80px;
+  position: relative;
+  z-index: 3;
+  width: 84px;
+  height: 84px;
   object-fit: contain;
-  margin-bottom: 16px;
-  border-radius: var(--radius-md);
-  filter: drop-shadow(0 8px 16px rgba(217, 70, 239, 0.25));
+  filter: drop-shadow(0 6px 12px rgba(88, 28, 135, 0.3));
+  transition: filter 0.3s ease;
+}
+
+.minimal-logo-wrapper:hover .minimal-logo-img {
+  filter: drop-shadow(0 10px 20px rgba(88, 28, 135, 0.5)) drop-shadow(0 2px 8px rgba(217, 70, 239, 0.45));
+}
+
+.minimal-logo-wrapper:hover::before {
+  animation: spinRing 2s linear infinite;
 }
 
 .minimal-title {
