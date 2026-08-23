@@ -1,57 +1,131 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { UKM_LIST, findUkm, searchUkms } from '../../../data/ukmData';
 
 const EntrySection = ({
   isEntriLocked, completedSteps, laporans, currentUkm, handleUkmChange,
   isLoading, ukmError, currentFotos, handleFileChange, removeCurrentFoto,
-  setPreviewImage, addToDraft
-}) => (
-  <>
-    <div className="section-heading" style={{ opacity: isEntriLocked ? 0.4 : 1, transition: '0.3s' }}>
-      <span className={`step-number ${completedSteps.tanggal && laporans.length > 0 ? 'step-badge--done' : ''}`}>2</span>
-      ENTRI DATA
-      {isEntriLocked && <span className="lock-badge">🔒 Pilih Tanggal Dulu</span>}
-    </div>
+  setPreviewImage, addToDraft, submittedUkms = []
+}) => {
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-    <div className="active-form-section" style={{ opacity: isEntriLocked ? 0.35 : 1, pointerEvents: isEntriLocked ? 'none' : 'auto', transition: '0.3s', filter: isEntriLocked ? 'grayscale(0.5)' : 'none' }}>
-      <div className="input-group">
-        <label className="form-label" style={{ display: 'block', marginBottom: '6px' }}>🏷️ NAMA UKM:</label>
-        <div className="ukm-input-container" style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
-          <input
-            type="text"
-            value={currentUkm}
-            onChange={handleUkmChange}
-            className="form-input"
-            placeholder="Cth: UKM Tari"
-            disabled={isLoading}
-            style={{
-              height: '48px', boxSizing: 'border-box', width: '100%', paddingRight: ukmError && currentUkm ? '40px' : '16px',
-              borderColor: ukmError && currentUkm ? 'var(--neon-red)' : undefined,
-              outlineColor: ukmError && currentUkm ? 'var(--neon-red)' : undefined,
-              backgroundColor: ukmError && currentUkm ? 'var(--neon-red-dim)' : undefined
-            }}
-          />
-          {ukmError && currentUkm && (
-            <span className="ukm-validation-icon error" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </span>
+  const matchedUkm = findUkm(currentUkm);
+  const isValid = Boolean(matchedUkm);
+  const hasInput = Boolean(currentUkm && currentUkm.trim().length > 0);
+
+  // Cari rekomendasi UKM hanya ketika user mulai mengetik dan belum cocok persis
+  const suggestions = hasInput && (!matchedUkm || matchedUkm.name.toLowerCase() !== currentUkm.trim().toLowerCase())
+    ? searchUkms(currentUkm, 4)
+    : [];
+
+  const handleSelectUkm = (ukmName) => {
+    handleUkmChange(ukmName);
+    setShowSuggestions(false);
+  };
+
+  return (
+    <>
+      <div className="section-heading" style={{ opacity: isEntriLocked ? 0.4 : 1, transition: '0.3s' }}>
+        <span className={`step-number ${completedSteps.tanggal && laporans.length > 0 ? 'step-badge--done' : ''}`}>2</span>
+        ENTRI DATA
+        {isEntriLocked && <span className="lock-badge">🔒 Pilih Tanggal Dulu</span>}
+      </div>
+
+      <div className="active-form-section" style={{ opacity: isEntriLocked ? 0.35 : 1, pointerEvents: isEntriLocked ? 'none' : 'auto', transition: '0.3s', filter: isEntriLocked ? 'grayscale(0.5)' : 'none' }}>
+        <div className="input-group">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <label className="form-label">🏷️ NAMA UKM:</label>
+          </div>
+
+          <div className="ukm-input-container" style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={currentUkm}
+              onChange={(e) => {
+                handleUkmChange(e);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => {
+                // Beri jeda agar event klik pada opsi suggestion tetap terdaftar
+                setTimeout(() => setShowSuggestions(false), 200);
+              }}
+              className="form-input"
+              placeholder="Cth: UKM Tari, UKM Softdev, UKM Roboholic..."
+              disabled={isLoading}
+              style={{
+                height: '48px', boxSizing: 'border-box', width: '100%', paddingRight: hasInput ? '40px' : '16px',
+                borderColor: ukmError && hasInput ? 'var(--neon-red)' : isValid ? '#10b981' : undefined,
+                outlineColor: ukmError && hasInput ? 'var(--neon-red)' : isValid ? '#10b981' : undefined,
+                backgroundColor: ukmError && hasInput ? 'var(--neon-red-dim)' : isValid ? 'rgba(16, 185, 129, 0.05)' : undefined
+              }}
+            />
+
+            {/* Dropdown Hasil Pencarian Dinamis (Hanya muncul saat mengetik kata kunci yang cocok) */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="ukm-suggestions-dropdown">
+                {suggestions.map((ukm) => (
+                  <div
+                    key={ukm.id}
+                    className="ukm-suggestion-item"
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Cegah blur dini
+                      handleSelectUkm(ukm.name);
+                    }}
+                  >
+                    <span className="ukm-suggestion-name">{ukm.name}</span>
+                    <span className="ukm-suggestion-badge">{ukm.category}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isValid && (
+              <span
+                className="ukm-validation-icon success"
+                style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}
+                title={`UKM Valid: ${matchedUkm.name} (${matchedUkm.category})`}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </span>
+            )}
+
+            {ukmError && hasInput && !isValid && (
+              <span
+                className="ukm-validation-icon error"
+                style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </span>
+            )}
+          </div>
+
+          {isValid && (
+            <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#059669', fontWeight: 700 }}>
+              <span>✓ Terverifikasi: <strong>{matchedUkm.name}</strong></span>
+              <span style={{ background: '#ecfdf5', padding: '2px 8px', borderRadius: '10px', border: '1px solid #a7f3d0' }}>
+                {matchedUkm.category}
+              </span>
+            </div>
+          )}
+
+          {ukmError && (
+            <div className="warning-card warning-card--error" style={{ textAlign: 'left', marginTop: '8px' }}>
+              <span className="warning-card__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </span>
+              <span className="warning-card__text">{ukmError}</span>
+            </div>
           )}
         </div>
-        {ukmError && (
-          <div className="warning-card warning-card--error" style={{ textAlign: 'left', marginTop: '8px' }}>
-            <span className="warning-card__icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-            </span>
-            <span className="warning-card__text">{ukmError}</span>
-          </div>
-        )}
-      </div>
 
       <div className="input-group">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -121,6 +195,7 @@ const EntrySection = ({
       </button>
     </div>
   </>
-);
+  );
+};
 
 export default EntrySection;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CACHE_KEYS, cache } from '../../../utils/cache';
 import { REGEX } from '../../../utils/regex';
 import { reportApi } from '../../../services/api';
+import { findUkm } from '../../../data/ukmData';
 
 export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchHistory, showAlert, showConfirm) => {
   const [currentUkm, setCurrentUkm] = useState('');
@@ -29,7 +30,7 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
   }, [laporans, isAppInitialized]);
 
   const handleUkmChange = (e) => {
-    let value = e.target.value;
+    let value = typeof e === 'string' ? e : e?.target?.value ?? '';
     if (REGEX.ukmComma.test(value)) {
       value = value.replace(/,/g, '');
       setUkmError('Karakter Koma ( , ) tidak diperbolehkan!');
@@ -82,7 +83,17 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
     if (!currentUkm.trim()) return showAlert("LENGKAPI FORMULIR", "Silakan isi nama UKM terlebih dahulu.", "warning");
     if (ukmError) return showAlert("INPUT TIDAK VALID", "Perbaiki input Nama UKM (tidak boleh mengandung koma).", "error");
 
-    const ukmCleaned = currentUkm.trim();
+    const matchedUkm = findUkm(currentUkm);
+    if (!matchedUkm) {
+      setUkmError(`UKM "${currentUkm.trim()}" tidak terdaftar di database!`);
+      return showAlert(
+        "UKM TIDAK TERDAFTAR",
+        `Nama UKM "${currentUkm.trim()}" tidak ditemukan dalam database resmi. Pastikan memilih atau mengetik nama UKM yang valid.`,
+        "error"
+      );
+    }
+
+    const ukmCleaned = matchedUkm.name;
     if (submittedUkms.some(u => u.toLowerCase() === ukmCleaned.toLowerCase())) {
       return showAlert("DUPLIKASI DATA", `UKM "${ukmCleaned}" sudah pernah dilaporkan pada tanggal ${availableDates.find(d => d.value === tanggal)?.label || tanggal}.`, "error");
     }

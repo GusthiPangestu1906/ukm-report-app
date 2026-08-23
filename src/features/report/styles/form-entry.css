@@ -23,6 +23,73 @@
   color: var(--neon-red, #ef4444);
 }
 
+.ukm-validation-icon.success {
+  color: #10b981;
+}
+
+/* Dynamic UKM Autocomplete Dropdown */
+.ukm-suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ukm-suggestion-item {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.ukm-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.ukm-suggestion-item:hover,
+.ukm-suggestion-item:focus {
+  background: #faf5ff;
+}
+
+.ukm-suggestion-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ukm-suggestion-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f3e8ff;
+  color: #9333ea;
+  border: 1px solid #e9d5ff;
+}
+
 /* Quick UKM Suggestion Chips */
 .ukm-chips-wrapper {
   margin-top: 8px;
