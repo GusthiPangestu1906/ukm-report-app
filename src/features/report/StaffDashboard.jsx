@@ -4,14 +4,18 @@ import TabNavigation from './components/TabNavigation';
 import SettingsSection from './components/SettingsSection';
 import EntrySection from './components/EntrySection';
 import QueueSection from './components/QueueSection';
+import DesktopBentoGrid from './components/DesktopBentoGrid';
+import Header from '../ui/components/Header';
+import { useIsDesktop } from '../ui/hooks/useMediaQuery';
 
 export default function StaffDashboard(props) {
   const {
-    tanggal, laporans, processingId, handleBulanSelect, handleTanggalSelect,
-    selectedBulan, bulanOptions
+    tanggal, laporans = [], processingId, handleBulanSelect, handleTanggalSelect,
+    selectedBulan, bulanOptions = [], penanggungJawab, openDropdown, setOpenDropdown,
+    publicSpreadsheetUrl, onOpenAdmin, adminProfile
   } = props;
 
-  const { penanggungJawab } = props;
+  const isDesktop = useIsDesktop(1024);
   const [activeTab, setActiveTab] = useState('form');
   const [isEditingTime, setIsEditingTime] = useState(!penanggungJawab || !tanggal);
   const [isCustomDateMode, setIsCustomDateMode] = useState(false);
@@ -43,15 +47,46 @@ export default function StaffDashboard(props) {
     }
   }, [penanggungJawab, tanggal]);
 
-  const uniqueBulanOptions = bulanOptions.filter((v, i, a) => a.findIndex(t => (t.value === v.value)) === i);
-  const currentUploadIndex = processingId ? Math.max(1, laporans.findIndex(l => l.id === processingId) + 1) : 1;
+  const uniqueBulanOptions = (bulanOptions || []).filter((v, i, a) => a.findIndex(t => (t.value === v.value)) === i);
+  const currentUploadIndex = processingId ? Math.max(1, (laporans || []).findIndex(l => l.id === processingId) + 1) : 1;
 
+  // View untuk Layar Desktop (>= 1024px) - BENTO GRID 2 KARTU BERDAMPINGAN
+  if (isDesktop) {
+    return (
+      <DesktopBentoGrid
+        {...props}
+        isEditingTime={isEditingTime}
+        setIsEditingTime={setIsEditingTime}
+        quickPresets={quickPresets}
+        isSeninIniActive={isSeninIniActive}
+        isSeninLaluActive={isSeninLaluActive}
+        isCustomDateMode={isCustomDateMode}
+        setIsCustomDateMode={setIsCustomDateMode}
+        handleQuickPresetClick={handleQuickPresetClick}
+        uniqueBulanOptions={uniqueBulanOptions}
+        openDraftMenuId={openDraftMenuId}
+        setOpenDraftMenuId={setOpenDraftMenuId}
+        expandedDrafts={expandedDrafts}
+        toggleDraftExpand={toggleDraftExpand}
+        currentUploadIndex={currentUploadIndex}
+      />
+    );
+  }
+
+  // View untuk Layar Mobile / Tablet (< 1024px)
+  // Struktur 100% persis seperti semula tanpa perubahan
   return (
-    <>
+    <div className="form-card">
+      <Header publicSpreadsheetUrl={publicSpreadsheetUrl} onOpenAdmin={onOpenAdmin} adminProfile={adminProfile} />
+
+      {openDropdown && (
+        <div className="custom-select-overlay" onClick={() => setOpenDropdown(null)}></div>
+      )}
+
       <TabNavigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        queueLength={laporans.length}
+        queueLength={laporans ? laporans.length : 0}
       />
 
       {activeTab === 'form' && (
@@ -76,15 +111,16 @@ export default function StaffDashboard(props) {
       {activeTab === 'queue' && (
         <QueueSection
           {...props}
+          isDesktop={false}
           setActiveTab={setActiveTab}
           openDraftMenuId={openDraftMenuId}
           setOpenDraftMenuId={setOpenDraftMenuId}
           expandedDrafts={expandedDrafts}
           toggleDraftExpand={toggleDraftExpand}
           currentUploadIndex={currentUploadIndex}
-          totalUploads={laporans.length}
+          totalUploads={laporans ? laporans.length : 0}
         />
       )}
-    </>
+    </div>
   );
 }

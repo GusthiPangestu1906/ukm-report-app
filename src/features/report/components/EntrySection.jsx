@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UKM_LIST, findUkm, searchUkms } from '../../../data/ukmData';
+import { UKM_LIST, cleanUkmInput, findUkm, searchUkms } from '../../../data/ukmData';
 
 const EntrySection = ({
   isEntriLocked, completedSteps, laporans, currentUkm, handleUkmChange,
@@ -13,12 +13,12 @@ const EntrySection = ({
   const hasInput = Boolean(currentUkm && currentUkm.trim().length > 0);
 
   // Cari rekomendasi UKM hanya ketika user mulai mengetik dan belum cocok persis
-  const suggestions = hasInput && (!matchedUkm || matchedUkm.name.toLowerCase() !== currentUkm.trim().toLowerCase())
+  const suggestions = hasInput && (!matchedUkm || cleanUkmInput(matchedUkm.name).toLowerCase() !== currentUkm.trim().toLowerCase())
     ? searchUkms(currentUkm, 4)
     : [];
 
   const handleSelectUkm = (ukmName) => {
-    handleUkmChange(ukmName);
+    handleUkmChange(cleanUkmInput(ukmName));
     setShowSuggestions(false);
   };
 
@@ -27,16 +27,25 @@ const EntrySection = ({
       <div className="section-heading" style={{ opacity: isEntriLocked ? 0.4 : 1, transition: '0.3s' }}>
         <span className={`step-number ${completedSteps.tanggal && laporans.length > 0 ? 'step-badge--done' : ''}`}>2</span>
         ENTRI DATA
-        {isEntriLocked && <span className="lock-badge">🔒 Pilih Tanggal Dulu</span>}
+        {isEntriLocked && (
+          <span className="lock-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>Pilih Tanggal Dulu</span>
+          </span>
+        )}
       </div>
 
       <div className="active-form-section" style={{ opacity: isEntriLocked ? 0.35 : 1, pointerEvents: isEntriLocked ? 'none' : 'auto', transition: '0.3s', filter: isEntriLocked ? 'grayscale(0.5)' : 'none' }}>
         <div className="input-group">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-            <label className="form-label">🏷️ NAMA UKM:</label>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+              <span>NAMA UKM:</span>
+            </label>
           </div>
 
           <div className="ukm-input-container" style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+            <span className="ukm-prefix-badge" aria-hidden="true">UKM</span>
             <input
               type="text"
               value={currentUkm}
@@ -50,10 +59,10 @@ const EntrySection = ({
                 setTimeout(() => setShowSuggestions(false), 200);
               }}
               className="form-input"
-              placeholder="Cth: UKM Tari, UKM Softdev, UKM Roboholic..."
+              placeholder="Cth: Tari, Softdev, Roboholic..."
               disabled={isLoading}
               style={{
-                height: '48px', boxSizing: 'border-box', width: '100%', paddingRight: hasInput ? '40px' : '16px',
+                height: '48px', boxSizing: 'border-box', width: '100%', paddingLeft: '72px', paddingRight: hasInput ? '40px' : '16px',
                 borderColor: ukmError && hasInput ? 'var(--neon-red)' : isValid ? '#10b981' : undefined,
                 outlineColor: ukmError && hasInput ? 'var(--neon-red)' : isValid ? '#10b981' : undefined,
                 backgroundColor: ukmError && hasInput ? 'var(--neon-red-dim)' : isValid ? 'rgba(16, 185, 129, 0.05)' : undefined
@@ -129,7 +138,10 @@ const EntrySection = ({
 
       <div className="input-group">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <label className="form-label">📸 LAMPIRAN FOTO KEGIATAN:</label>
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            <span>LAMPIRAN FOTO KEGIATAN:</span>
+          </label>
           <span className="photo-quota-badge">{currentFotos.length}/3 Foto</span>
         </div>
 

@@ -31,6 +31,7 @@ export const useReportForm = (isAppInitialized, tanggal, penanggungJawab, fetchH
 
   const handleUkmChange = (e) => {
     let value = typeof e === 'string' ? e : e?.target?.value ?? '';
+    value = value.replace(/^ukm\s+/i, '');
     if (REGEX.ukmComma.test(value)) {
       value = value.replace(/,/g, '');
       setUkmError('Karakter Koma ( , ) tidak diperbolehkan!');

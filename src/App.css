@@ -10,4 +10,8 @@
 
 /* Feature: Report */
 @import './features/report/styles/dashboard.css';
+@import './features/report/styles/bento-grid.css';
 @import './features/report/styles/form.css';
+
+/* Feature: Admin */
+@import './features/admin/styles/admin.css';

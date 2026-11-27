@@ -8,6 +8,14 @@ export const useReportHistory = (user) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [publicSpreadsheetUrl, setPublicSpreadsheetUrl] = useState('');
   const [submittedUkms, setSubmittedUkms] = useState([]);
+  const [appConfig, setAppConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ukm_app_config');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const fetchHistory = useCallback(async (forceRefresh = false) => {
     if (!forceRefresh) {
@@ -25,6 +33,12 @@ export const useReportHistory = (user) => {
       if (result.status === "success") {
         setHistoryData(result.data);
         if (result.publicSpreadsheetUrl) setPublicSpreadsheetUrl(result.publicSpreadsheetUrl);
+        if (result.appConfig) {
+          setAppConfig(result.appConfig);
+          try {
+            localStorage.setItem('ukm_app_config', JSON.stringify(result.appConfig));
+          } catch { /* ignore */ }
+        }
         cache.set(CACHE_KEYS.historyData, result.data);
         cache.set(CACHE_KEYS.historyTimestamp, Date.now());
       }
@@ -53,6 +67,7 @@ export const useReportHistory = (user) => {
     historyData,
     isLoadingHistory,
     publicSpreadsheetUrl,
+    appConfig,
     submittedUkms,
     fetchHistory,
     updateSubmittedUkms

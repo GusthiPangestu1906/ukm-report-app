@@ -8,9 +8,10 @@ import spinnerLoading from './assets/Spinner Loading.png';
 // Components
 import AuthScreen from './features/auth/AuthScreen';
 import StaffDashboard from './features/report/StaffDashboard';
+import AdminDashboard from './features/admin/AdminDashboard';
+import AdminPinModal from './features/admin/components/AdminPinModal';
 import Modal from './features/ui/Modal';
 import ImagePreviewOverlay from './features/ui/ImagePreviewOverlay';
-import Header from './features/ui/components/Header';
 import UploadProgressModal from './features/ui/components/UploadProgressModal';
 
 // Hooks (Business Logic Layer)
@@ -19,10 +20,37 @@ import { useDateSettings } from './features/report/hooks/useDateSettings';
 import { useReportHistory } from './features/report/hooks/useReportHistory';
 import { useReportForm } from './features/report/hooks/useReportForm';
 import { useModal } from './features/ui/hooks/useModal';
+const DEFAULT_ADMIN_PROFILE = {
+  name: 'Gusthi',
+  phone: '0823-3401-5531'
+};
 
 function App() {
   const [isAppInitialized, setIsAppInitialized] = useState(false);
   const [showLogoutPrompt, setShowLogoutPrompt] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [showAdminPinModal, setShowAdminPinModal] = useState(false);
+  const [adminProfile, setAdminProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ukm_admin_profile');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.name && parsed?.phone) return parsed;
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_ADMIN_PROFILE;
+  });
+
+  const handleSaveAdminProfile = (nextProfile) => {
+    const cleaned = {
+      name: (nextProfile?.name || '').trim() || DEFAULT_ADMIN_PROFILE.name,
+      phone: (nextProfile?.phone || '').trim() || DEFAULT_ADMIN_PROFILE.phone
+    };
+    setAdminProfile(cleaned);
+    try {
+      localStorage.setItem('ukm_admin_profile', JSON.stringify(cleaned));
+    } catch { /* ignore */ }
+  };
 
   // 1. UI & Modal Hook
   const { modal, showAlert, showConfirm, closeModal } = useModal();
@@ -58,6 +86,17 @@ function App() {
   useEffect(() => {
     historySettings.updateSubmittedUkms(dateSettings.tanggal);
   }, [dateSettings.tanggal, historySettings.historyData, historySettings.updateSubmittedUkms]);
+
+  // Sync global admin profile from Google Sheets config when fetched
+  useEffect(() => {
+    const cfg = historySettings.appConfig;
+    if (cfg && (cfg.adminName || cfg.adminPhone)) {
+      handleSaveAdminProfile({
+        name: cfg.adminName || adminProfile.name,
+        phone: cfg.adminPhone || adminProfile.phone
+      });
+    }
+  }, [historySettings.appConfig]);
 
   const handleLogoutClick = () => {
     if (reportForm.laporans.length > 0) {
@@ -101,20 +140,28 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      <div className="form-card">
-        <Header publicSpreadsheetUrl={historySettings.publicSpreadsheetUrl} />
-
-        {/* Date Dropdown Overlay */}
-        {dateSettings.openDropdown && (
-          <div className="custom-select-overlay" onClick={() => dateSettings.setOpenDropdown(null)}></div>
-        )}
-
+      {isAdminMode ? (
+        <AdminDashboard
+          historyData={historySettings.historyData}
+          publicSpreadsheetUrl={historySettings.publicSpreadsheetUrl}
+          appConfig={historySettings.appConfig}
+          adminProfile={adminProfile}
+          onSaveAdminProfile={handleSaveAdminProfile}
+          onRefreshHistory={() => historySettings.fetchHistory(true)}
+          onBackToStaff={() => setIsAdminMode(false)}
+          showAlert={showAlert}
+        />
+      ) : (
         <StaffDashboard
           {...dateSettings}
           {...reportForm}
           {...historySettings}
+          publicSpreadsheetUrl={historySettings.publicSpreadsheetUrl}
+          adminProfile={adminProfile}
           penanggungJawab={penanggungJawab}
           setPenanggungJawab={handlePenanggungChange}
+          onLogout={handleLogoutClick}
+          onOpenAdmin={() => setShowAdminPinModal(true)}
           addToDraft={() =>
             reportForm.addToDraft(
               dateSettings.selectedBulan,
@@ -123,9 +170,15 @@ function App() {
             )
           }
         />
-      </div>
+      )}
 
       {/* Global Overlays */}
+      <AdminPinModal
+        isOpen={showAdminPinModal}
+        onClose={() => setShowAdminPinModal(false)}
+        onSuccess={() => setIsAdminMode(true)}
+      />
+
       <Modal modal={modal} />
 
       <UploadProgressModal

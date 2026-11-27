@@ -1,31 +1,89 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
+const ITEMS_PER_SLIDE = 3;
 
 const QueueSection = ({
   isAntreanLocked, laporans, processingId, tanggal,
   availableDates, openDraftMenuId, setOpenDraftMenuId, handleEditDraft,
   setActiveTab, removeDraft, toggleDraftExpand, expandedDrafts, setPreviewImage,
-  handleSubmit, isLoading, currentUploadIndex, totalUploads
-}) => (
+  handleSubmit, isLoading, currentUploadIndex, totalUploads, isDesktop = false
+}) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const prevLengthRef = useRef(laporans.length);
+
+  const totalSlides = Math.max(1, Math.ceil(laporans.length / ITEMS_PER_SLIDE));
+
+  // Clamp slide if items are deleted
+  useEffect(() => {
+    if (currentSlide >= totalSlides) {
+      setCurrentSlide(Math.max(0, totalSlides - 1));
+    }
+  }, [totalSlides, currentSlide]);
+
+  // Jump to newest slide when a new item is added
+  useEffect(() => {
+    if (isDesktop && laporans.length > prevLengthRef.current) {
+      setCurrentSlide(Math.max(0, Math.ceil(laporans.length / ITEMS_PER_SLIDE) - 1));
+    }
+    prevLengthRef.current = laporans.length;
+  }, [laporans.length, isDesktop]);
+
+  // Follow active item during upload
+  useEffect(() => {
+    if (isDesktop && processingId) {
+      const idx = laporans.findIndex(item => item.id === processingId);
+      if (idx !== -1) {
+        setCurrentSlide(Math.floor(idx / ITEMS_PER_SLIDE));
+      }
+    }
+  }, [processingId, laporans, isDesktop]);
+
+  const startIndex = isDesktop ? currentSlide * ITEMS_PER_SLIDE : 0;
+  const visibleLaporans = isDesktop
+    ? laporans.slice(startIndex, startIndex + ITEMS_PER_SLIDE)
+    : laporans;
+
+  return (
   <div style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-    <div className="section-heading" style={{ opacity: isAntreanLocked ? 0.4 : 1, transition: '0.3s' }}>
-      <span className={`step-number ${laporans.length > 0 ? 'step-badge--done' : ''}`}>3</span>
-      ANTREAN PENGIRIMAN ({laporans.length})
-      {isAntreanLocked && <span className="lock-badge">🔒 Pilih Tanggal Dulu</span>}
-    </div>
+    {!isDesktop && (
+      <div className="section-heading" style={{ opacity: isAntreanLocked ? 0.4 : 1, transition: '0.3s' }}>
+        <span className={`step-number ${laporans.length > 0 ? 'step-badge--done' : ''}`}>3</span>
+        ANTREAN PENGIRIMAN ({laporans.length})
+        {isAntreanLocked && <span className="lock-badge">🔒 Pilih Tanggal Dulu</span>}
+      </div>
+    )}
+
+    {isDesktop && isAntreanLocked && (
+      <div className="bento-lock-alert">
+        <span>🔒</span>
+        <span>Pilih Tanggal & Nama Pengirim di formulir kiri untuk mengaktifkan antrean</span>
+      </div>
+    )}
 
     <div className="draft-list-wrapper" style={{ opacity: isAntreanLocked ? 0.35 : 1, pointerEvents: isAntreanLocked ? 'none' : 'auto', transition: '0.3s', filter: isAntreanLocked ? 'grayscale(0.5)' : 'none', padding: '16px' }}>
-      <div className="draft-list-section">
+      <div className="draft-list-section" key={isDesktop ? `slide-${currentSlide}` : 'mobile-list'} style={isDesktop ? { animation: 'fadeIn 0.2s ease' } : undefined}>
         {laporans.length === 0 ? (
-          <div className="empty-draft">[ ANTREAN KOSONG ]</div>
+          isDesktop ? (
+            <div className="bento-empty-queue">
+              <div className="bento-empty-icon">📥</div>
+              <div className="bento-empty-title">Antrean Masih Kosong</div>
+              <p className="bento-empty-desc">
+                Isi formulir pelaporan di sebelah kiri, lalu klik <strong>"MASUKKAN KE ANTREAN"</strong>. Laporan yang ditambahkan akan muncul di sini dan siap dikirim.
+              </p>
+            </div>
+          ) : (
+            <div className="empty-draft">[ ANTREAN KOSONG ]</div>
+          )
         ) : (
-          laporans.map((laporan, index) => {
+          visibleLaporans.map((laporan, index) => {
+            const globalIndex = startIndex + index;
             const isProcessing = processingId === laporan.id;
             return (
               <div className={`draft-item ${isProcessing ? 'processing' : ''}`} key={laporan.id}>
                 <div className="draft-item-header">
                   <div className="draft-title-container">
                     <div className="draft-title-main">
-                      <span className="draft-number">#{index + 1}</span>
+                      <span className="draft-number">#{globalIndex + 1}</span>
                       <span className="draft-title">{laporan.namaUkm}</span>
                     </div>
                     <div className="draft-item-info-row">
@@ -81,11 +139,49 @@ const QueueSection = ({
         )}
       </div>
 
+      {isDesktop && totalSlides > 1 && (
+        <div className="bento-queue-pagination">
+          <button
+            type="button"
+            className="bento-slide-btn"
+            onClick={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
+            disabled={currentSlide === 0}
+            title="Slide sebelumnya"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+
+          <div className="bento-slide-dots">
+            {Array.from({ length: totalSlides }, (_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`bento-slide-dot ${idx === currentSlide ? 'active' : ''}`}
+                onClick={() => setCurrentSlide(idx)}
+                title={`Slide ${idx + 1}`}
+              />
+            ))}
+            <span className="bento-slide-counter">{currentSlide + 1} / {totalSlides}</span>
+          </div>
+
+          <button
+            type="button"
+            className="bento-slide-btn"
+            onClick={() => setCurrentSlide(prev => Math.min(totalSlides - 1, prev + 1))}
+            disabled={currentSlide === totalSlides - 1}
+            title="Slide berikutnya"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+      )}
+
       <button type="button" onClick={handleSubmit} disabled={isLoading || laporans.length === 0} className={`submit-button ${isLoading ? 'loading' : ''}`}>
         {isLoading ? <span>MENGUNGGAH {currentUploadIndex}/{totalUploads}</span> : `JALANKAN PENGUNGGAHAN (${laporans.length})`}
       </button>
     </div>
   </div>
-);
+  );
+};
 
 export default QueueSection;
