@@ -16,5 +16,16 @@ export const reportApi = {
     });
     if (!response.ok) throw new Error("Gagal mengirim laporan");
     return response.json();
+  },
+
+  updateConfig: async (payload) => {
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'updateConfig', ...payload }),
+      redirect: 'follow'
+    });
+    if (!response.ok) throw new Error("Gagal memperbarui pengaturan");
+    return response.json();
   }
 };

@@ -5,11 +5,11 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, rgba(250, 245, 255, 0.95) 0%, rgba(243, 232, 255, 0.9) 100%);
-  border: 1px solid rgba(217, 70, 239, 0.25);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-lg);
   margin-bottom: 20px;
-  box-shadow: 0 4px 14px rgba(217, 70, 239, 0.06);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   gap: 12px;
 }
 
@@ -31,14 +31,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border-radius: 12px;
   background: #ffffff;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid #e2e8f0;
   font-size: 12px;
   font-weight: 700;
-  color: #6b21a8;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .sender-name {
@@ -52,13 +52,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #d946ef 0%, #9333ea 100%);
-  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
   font-size: 12px;
-  font-weight: 800;
-  box-shadow: 0 2px 8px rgba(217, 70, 239, 0.3);
+  font-weight: 700;
 }
 
 .settings-info-text {
@@ -83,26 +83,26 @@
 
 .btn-change-settings {
   background: #ffffff;
-  border: 1px solid #d8b4fe;
-  color: var(--color-primary-dark);
-  font-weight: 800;
-  font-size: 11px;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .btn-change-settings:hover {
-  background: var(--color-primary);
-  color: #ffffff;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #6d28d9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(217, 70, 239, 0.3);
 }
 
 /* Quick Date Chips */
@@ -137,17 +137,17 @@
 }
 
 .quick-date-chip:hover {
-  border-color: #c084fc;
-  background: #faf5ff;
-  color: #7e22ce;
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #6d28d9;
   transform: translateY(-1px);
 }
 
 .quick-date-chip.active {
-  background: linear-gradient(135deg, #d946ef 0%, #9333ea 100%);
-  border-color: transparent;
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(217, 70, 239, 0.35);
+  background: #f5f3ff;
+  border-color: #8b5cf6;
+  color: #6d28d9;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.12);
 }
 
 .btn-save-settings {

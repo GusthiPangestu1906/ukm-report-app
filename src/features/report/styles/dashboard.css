@@ -15,10 +15,9 @@
   width: 100%;
   max-width: 580px;
   background: var(--color-bg-card);
-  backdrop-filter: blur(20px);
-  padding: 32px 28px;
+  padding: 28px 26px;
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  box-shadow: var(--shadow-card);
   box-sizing: border-box;
   border: 1px solid var(--color-border-subtle);
   position: relative;
@@ -49,8 +48,8 @@
   gap: 6px;
   padding: 8px 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.12) 100%);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
   color: var(--color-success-dark);
   font-weight: 700;
   font-size: 12px;
@@ -61,7 +60,7 @@
 }
 
 .sheets-header-btn:hover {
-  background: rgba(16, 185, 129, 0.18);
+  background: #d1fae5;
   transform: translateY(-1px);
 }
 
@@ -108,35 +107,34 @@
   flex-direction: row;
   align-items: center;
   gap: 8px;
-  color: #86198f;
+  color: var(--color-text-main);
   font-size: 13px;
   font-weight: 800;
   margin-bottom: 10px;
 }
 
 .section-heading > span:first-child {
-  background: linear-gradient(135deg, #d946ef 0%, #9333ea 100%);
-  border: none;
-  color: #ffffff;
+  background: #ede9fe;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
   width: 24px;
   height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 800;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(217, 70, 239, 0.35);
   transition: all 0.3s;
   line-height: 1;
 }
 
 .section-heading > span:first-child.step-badge--done {
-  background: linear-gradient(135deg, #d946ef 0%, #9333ea 100%);
+  background: #7c3aed;
   color: #ffffff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(217, 70, 239, 0.35);
+  border-color: #7c3aed;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
 }
 
 .lock-badge {

@@ -1,0 +1,277 @@
+/* ==========================================================================
+   BENTO GRID LAYOUT (DESKTOP MODE >= 1024px)
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  .app-wrapper {
+    padding: 28px 24px 40px !important;
+    align-items: flex-start !important;
+    min-height: 100vh !important;
+  }
+
+  .bento-page-shell {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .bento-topbar {
+    width: 100%;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 14px 22px;
+    box-shadow: var(--shadow-card);
+    box-sizing: border-box;
+  }
+
+  .bento-settings-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 20px 24px !important;
+  }
+
+  .bento-settings-card .settings-active-banner,
+  .bento-settings-card .active-form-section {
+    margin-bottom: 0;
+  }
+
+  .bento-settings-card .active-form-section {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 6px 0 0;
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    gap: 14px 18px;
+    align-items: start;
+  }
+
+  .bento-settings-card .custom-date-section {
+    grid-column: 1 / -1;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px !important;
+    margin-top: 0 !important;
+  }
+
+  .bento-settings-card .btn-save-settings {
+    grid-column: 1 / -1;
+    width: auto;
+    min-width: 220px;
+    justify-self: end;
+    padding: 0 28px;
+  }
+
+  /* Grid 2 Bento Berdampingan di Desktop */
+  .bento-grid-container {
+    display: grid;
+    grid-template-columns: minmax(520px, 1.25fr) minmax(400px, 1fr);
+    gap: 22px;
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .bento-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Bento 1: Formulir Input (Kiri) */
+  .bento-card--form {
+    padding: 32px 28px;
+  }
+
+  /* Bento 2: Antrean Pengiriman (Kanan - Sticky) */
+  .bento-card--queue {
+    position: sticky;
+    top: 28px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .bento-card--queue .draft-list-wrapper {
+    overflow: visible;
+    margin-bottom: 16px;
+  }
+
+  .bento-queue-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 12px;
+    margin-top: 4px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .bento-slide-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .bento-slide-btn:hover:not(:disabled) {
+    background: #f5f3ff;
+    border-color: #ddd6fe;
+    color: #6d28d9;
+  }
+
+  .bento-slide-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .bento-slide-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bento-slide-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    border: none;
+    background: #cbd5e1;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .bento-slide-dot.active {
+    width: 20px;
+    background: #7c3aed;
+  }
+
+  .bento-slide-counter {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    margin-left: 6px;
+  }
+
+  .bento-card--queue .submit-button {
+    margin-top: auto;
+  }
+}
+
+/* Header Bento Antrean */
+.bento-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  gap: 12px;
+}
+
+.bento-queue-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bento-queue-header-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bento-queue-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--color-text-main);
+  line-height: 1.2;
+}
+
+.bento-queue-subtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.bento-queue-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Empty State untuk Bento Antrean */
+.bento-empty-queue {
+  padding: 40px 24px;
+  text-align: center;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: var(--radius-lg);
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.bento-empty-icon {
+  font-size: 38px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 10px rgba(217, 70, 239, 0.2));
+}
+
+.bento-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 6px;
+}
+
+.bento-empty-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  max-width: 320px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.bento-empty-desc strong {
+  color: var(--color-primary-dark);
+}
+
+/* Banner Peringatan jika belum pilih tanggal */
+.bento-lock-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+  margin-bottom: 14px;
+}
